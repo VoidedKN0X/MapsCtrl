@@ -7,9 +7,9 @@
 MapsCtrl shows OpenStreetMap maps you download once, then works without a connection:
 - search places, addresses and coordinates on the phone
 - routes by car, bike and on foot, worked out on the phone
-- turn-by-turn navigation with spoken directions, speed limits and speed camera warnings
+- turn-by-turn navigation with spoken directions that name the streets, speed limits and speed camera warnings
 
-No account, no tracking, no map tiles streamed from a server. It only goes online when you start a download.
+No account, no tracking, no map tiles streamed from a server. It only goes online when you start a download, or when you ask for a public transport route.
 
 Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 
@@ -23,12 +23,15 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 - **Place sheet** with the category, address, opening hours, phone, website and other OpenStreetMap details, and **Route to**, **Save** and **Share**
 - **Routes by car, bike and on foot** with [BRouter](https://github.com/abrensch/brouter), from your position, a place or coordinates you type, or a point you tap on the map. Routing data is downloaded per area, only after MapsCtrl has shown you the size and you agreed
 - **Turn-by-turn navigation:** next-turn card, arrival time, time and distance left, your speed, the **speed limit** of the road, **speed camera warnings**, **spoken directions** with your phone's text-to-speech (offline voices work) and **rerouting** when you leave the route. The map turns with your direction of travel
+- **Street names in directions:** "Turn left onto Rue Grimaldi", "Take the 2nd exit onto Avenue de la Costa", on the next-turn card and in the voice. The names come from the maps on your phone, so this works offline too
+- **Public transport** with [Transitous](https://transitous.org) (online, only when you pick **Transit**): leave now, depart at or arrive by a time, journeys with walks, lines in their own colours, platforms, changes and delays, and the journey drawn on the map
+- **Hillshading:** shaded hills and mountains, on or off under **Map layers**. The elevation data is downloaded per map in **Downloads**, after MapsCtrl has shown you its size, and can be deleted again
 - **Saved places and tracks**, **track recording** (also with the screen off) and **GPX import and export**
 - **Share your ETA with ntfy** (off by default): while navigating, your arrival time and the distance left go to an ntfy topic on a server you choose. Never your position
 - **Opens `geo:` links** from other apps
 - **Ctrl / Signal look:** dark and light, following your phone, one violet accent, Space Grotesk and JetBrains Mono
 
-**Not yet:** Android Auto, hillshading and contour lines, public transport and live traffic. Turn instructions don't name streets yet.
+**Not yet:** Android Auto, contour lines and live traffic.
 
 ## Requirements
 
@@ -54,8 +57,10 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 - **Search:** tap the search bar. Type a name, a street with a house number, a category such as "pharmacy", or coordinates.
 - **A place:** tap a symbol or name on the map, or long-press anywhere for a pin.
 - **Route:** **Route to** on a place, choose car, bike or foot. Tap **From** to start somewhere else than your position. The first route in an area asks to download routing data.
+- **Public transport:** in route planning, pick **Transit**. **Change** sets a departure or arrival time; tap a journey to see its walks, lines, platforms and stops.
 - **Navigate:** **Start**. Tap the speaker to mute, **End** to stop.
-- **Settings** (profile picture, top right): units, map colours, voice, speed limit and camera warnings, ETA sharing.
+- **Hillshading:** the layers button on the map. Download terrain data for your maps under **Downloads > Terrain data**.
+- **Settings** (profile picture, top right): units, map colours, voice, speed limit and camera warnings, public transport, ETA sharing.
 
 ## Is it safe to install?
 
@@ -79,7 +84,7 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 
 | Permission | What MapsCtrl uses it for |
 | --- | --- |
-| Internet | Only for downloads you start (maps, search data, routing data) and, if you turn it on, ETA sharing to your ntfy server. Search, routing and navigation work offline. |
+| Internet | Only for downloads you start (maps, search data, routing data, terrain data), public transport routes you ask for (Transitous) and, if you turn it on, ETA sharing to your ntfy server. Search, car/bike/foot routing and navigation work offline. |
 | Location (*you allow it*) | Your position on the map, navigation and track recording. It stays on the phone. MapsCtrl never asks for background location. |
 | Foreground service (location) | Keeps navigation and track recording going with the screen off, with a notification while it runs. |
 | App-internal broadcasts (`com.vknxworks.mapsctrl.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`) | Added by AndroidX so that only MapsCtrl itself can send to its own internal receivers. |
@@ -96,10 +101,12 @@ MapsCtrl connects to these servers, and only when you start it:
 | --- | --- | --- |
 | `download.mapsforge.org` | You open **Add maps**, download or update a map, or tap **Check for updates** | A normal HTTPS request for the list or the file. No location, no identifiers; the user agent is only `MapsCtrl/<version>` |
 | `brouter.de` | A route needs routing data and you tap **Download** | The same: the list of tiles, then the tiles you agreed to |
+| `elevation-tiles-prod.s3.amazonaws.com` | You tap **Download** for a map's terrain data (hillshading) | The size check and the elevation tiles you agreed to. No location beyond which 1° tiles you download |
+| `api.transitous.org` | Only when you pick **Transit** in route planning, and when you change the start, destination or time while it's picked | Your start and destination points (rounded to about 1 m) and the time you chose, nothing else. The user agent names MapsCtrl, its version and this repo's URL, as Transitous asks of apps. To hide Transit completely: **Settings > Public transport** |
 | Your ntfy server | Only with **Share my ETA** on, while navigating, and for **Send a test message** | Your destination's name, arrival time and distance left, to the topic you set |
 
-- Search, routes and navigation run on the phone. MapsCtrl never sends what you search for or where you go.
-- No map tiles, geocoding or routing from online services.
+- Search, car/bike/foot routes and navigation run on the phone. MapsCtrl never sends what you search for or where you go; the one exception is a public transport search, which you start yourself and which sends only the two points and the time to Transitous ([its privacy policy](https://transitous.org/privacy/)).
+- No map tiles or geocoding from online services, and no car, bike or foot routing from them.
 - Your maps, saved places, tracks and settings are stored in MapsCtrl's private storage and can't be read by other apps. Android backups don't include them.
 - The Support, Report a bug, Source code and Licence links, and websites on a place sheet, open in your browser only when you tap them.
 
@@ -184,6 +191,8 @@ Native Android apps for self-hosted services and everyday tools, all with the sa
 MapsCtrl is licensed under the [GNU General Public License v3.0](LICENSE). © VKNXWorks
 
 - **Map data:** © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, available under the Open Database License (ODbL). Maps and search data are the Mapsforge files from download.mapsforge.org; routing data is BRouter's from brouter.de; both are made from OpenStreetMap.
+- **Terrain data** for hillshading: [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) by Mapzen / Tilezen on AWS Open Data (the "skadi" `.hgt` tiles), made from SRTM, GMTED2010 and 3DEP (courtesy of the U.S. Geological Survey), ETOPO1 (NOAA), EU-DEM (produced using Copernicus data and information funded by the European Union) and national sources including © Kartverket, © Commonwealth of Australia (Geoscience Australia) 2017, LINZ, Canada's CDEM (Open Government Licence – Canada), INEGI and the UK Environment Agency. The sources are public domain or open licences that allow redistribution with attribution; the full list and wording are in [Tilezen's attribution document](https://github.com/tilezen/joerd/blob/master/docs/attribution.md).
+- **Public transport** journeys: [Transitous](https://transitous.org), a free, community-run [MOTIS](https://github.com/motis-project/motis) service, from timetables published by transport operators ([sources and their licences](https://transitous.org/sources/)). MapsCtrl links to the sources from every transit result.
 - **[Mapsforge](https://github.com/mapsforge/mapsforge)** draws the maps: LGPL-3.0, used unchanged from Maven Central. MapsCtrl's map style (`CtrlRenderTheme`) and symbols are its own.
 - **[BRouter](https://github.com/abrensch/brouter)** works out routes: MIT licence. Its routing core and the car, bike and foot profiles are included unchanged in `brouter/` and `app/src/main/assets/brouter/` (see [brouter/LICENSE](brouter/LICENSE)).
 - **[AndroidSVG](https://github.com/BigBadaboom/androidsvg)** (Apache 2.0) draws the map symbols. **SQLite** (public domain), bundled through AndroidX's sqlite-bundled, reads the search data (Android's own SQLite lacks the R-tree and full-text modules it needs). AndroidX, Jetpack Compose, Material 3 and Kotlin libraries are Apache 2.0.

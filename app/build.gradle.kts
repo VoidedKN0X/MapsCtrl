@@ -22,8 +22,8 @@ android {
         minSdk = 35
         targetSdk = 36
         // Bump both to publish a new release (see CHANGELOG.md).
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 5
+        versionName = "0.4.0"
         // 64-bit ARM phones only (arm64-v8a), like every Ctrl app.
         ndk { abiFilters += listOf("arm64-v8a") }
     }
@@ -91,6 +91,8 @@ android {
             // The bundled BRouter profiles, and (optionally) a folder with .rd5 segments for the routing test.
             it.systemProperty("mapsctrl.profiles", file("src/main/assets/brouter").absolutePath)
             System.getenv("MAPSCTRL_TEST_SEGMENTS")?.let { dir -> it.systemProperty("mapsctrl.segments", dir) }
+            // A Mapsforge .map file (monaco.map) for the street-name lookup test.
+            System.getenv("MAPSCTRL_TEST_MAP")?.let { map -> it.systemProperty("mapsctrl.map", map) }
         }
     }
 }

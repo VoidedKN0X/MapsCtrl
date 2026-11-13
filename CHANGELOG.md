@@ -4,6 +4,19 @@ What changed in each MapsCtrl release. Every release on the [Releases page](http
 
 To publish a new version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, add a section here, and push to `main`. Pushes without a version bump only build; they don't make a release.
 
+## v0.4.0 (2026-11-13)
+
+### New
+
+- **Street names in directions.** The next-turn card and the voice now say where you turn: "Turn left onto Rue Grimaldi", "Take the 2nd exit onto Avenue de la Costa". BRouter's routing data has no street names, so MapsCtrl finds the road you turn onto in the maps on your phone, in your phone's language when the map has it. It works offline; where a road has no name, its number is used ("onto D6007"), and where nothing fits, the instruction stays as before.
+- **Public transport with Transitous.** Route planning has a new **Transit** mode: leave now, or pick a day and a time to depart at or arrive by. You get journeys with their walks, lines in their own colours, the direction, platforms (and platform changes), the number of stops, changes, delays and cancellations, and the journey you pick is drawn on the map. Journeys come from [Transitous](https://transitous.org), a free, community-run service, so this needs a connection. Only your start and destination points and the time are sent, and only when you pick Transit. **Settings > Public transport** hides it completely.
+- **Hillshading.** Hills and mountains can be shaded on the map: the new **Map layers** button on the map turns it on and off. It needs elevation data, which you download per map under **Downloads > Terrain data (hillshading)**: MapsCtrl shows the size first (Monaco is one tile, about 7.5 MB) and you can delete it again. The data is from the public Terrain Tiles set (Mapzen / Tilezen on AWS Open Data).
+
+### Not in this version yet
+
+- Contour lines, Android Auto, live traffic.
+- Turn-by-turn navigation for public transport journeys (they're shown as a plan).
+
 ## v0.3.0 (2026-11-13)
 
 **MapsCtrl is rewritten from scratch.** Earlier versions were a reskinned copy of another maps app. From 0.3.0 MapsCtrl is its own app, with its own code, its own map style and symbols, and its own engine: maps are drawn with [Mapsforge](https://github.com/mapsforge/mapsforge) and routes come from [BRouter](https://github.com/abrensch/brouter), both running on your phone. It installs as an update over 0.2.0, with the same signing key.

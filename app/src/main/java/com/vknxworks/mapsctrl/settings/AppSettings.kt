@@ -52,6 +52,10 @@ data class AppSettings(
     val lastLon: Double = 4.3525,
     val lastZoom: Float = 4f,
     val hideScreenshots: Boolean = false,
+    /** Terrain shading on the map (needs elevation data from Downloads). */
+    val hillshading: Boolean = false,
+    /** Show the Transit mode (public transport from Transitous) in route planning. */
+    val transitEnabled: Boolean = true,
 )
 
 class SettingsRepository(private val context: Context, scope: CoroutineScope) {
@@ -71,6 +75,8 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         val lastLon = doublePreferencesKey("last_lon")
         val lastZoom = floatPreferencesKey("last_zoom")
         val hideScreenshots = booleanPreferencesKey("hide_screenshots")
+        val hillshading = booleanPreferencesKey("hillshading")
+        val transitEnabled = booleanPreferencesKey("transit_enabled")
     }
 
     private val prefs: Flow<Preferences> = context.appDataStore.data.catch { e ->
@@ -99,6 +105,8 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         lastLon = this[K.lastLon] ?: 4.3525,
         lastZoom = this[K.lastZoom] ?: 4f,
         hideScreenshots = this[K.hideScreenshots] ?: false,
+        hillshading = this[K.hillshading] ?: false,
+        transitEnabled = this[K.transitEnabled] ?: true,
     )
 
     /** Saves a change. If the phone's storage fails, the change is dropped instead of closing the app. */
@@ -121,6 +129,8 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
                 p[K.lastLon] = s.lastLon
                 p[K.lastZoom] = s.lastZoom
                 p[K.hideScreenshots] = s.hideScreenshots
+                p[K.hillshading] = s.hillshading
+                p[K.transitEnabled] = s.transitEnabled
             }
         } catch (_: IOException) {
         }

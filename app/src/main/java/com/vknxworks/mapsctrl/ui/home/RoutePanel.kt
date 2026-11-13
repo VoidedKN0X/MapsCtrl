@@ -120,15 +120,27 @@ fun RoutePanel(
             }
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ModeChip(TravelMode.CAR, Icons.Filled.DirectionsCar, R.string.mode_car, plan.mode, Modifier.weight(1f))
-                ModeChip(TravelMode.BIKE, Icons.AutoMirrored.Filled.DirectionsBike, R.string.mode_bike, plan.mode, Modifier.weight(1f))
-                ModeChip(TravelMode.FOOT, Icons.AutoMirrored.Filled.DirectionsWalk, R.string.mode_foot, plan.mode, Modifier.weight(1f))
+                val mode = plan.mode.takeIf { !plan.transit }
+                // Four chips need smaller labels to fit a phone's width.
+                val compact = settings.transitEnabled
+                ModeChip(TravelMode.CAR, Icons.Filled.DirectionsCar, R.string.mode_car, mode, Modifier.weight(1f), compact)
+                ModeChip(TravelMode.BIKE, Icons.AutoMirrored.Filled.DirectionsBike, R.string.mode_bike, mode, Modifier.weight(1f), compact)
+                ModeChip(TravelMode.FOOT, Icons.AutoMirrored.Filled.DirectionsWalk, R.string.mode_foot, mode, Modifier.weight(1f), compact)
+                if (settings.transitEnabled) TransitChip(plan.transit, Modifier.weight(1f))
+            }
+            if (plan.transit) {
+                Spacer(Modifier.height(10.dp))
+                TransitTimeRow()
             }
         }
+        // Transit hidden in Settings while it was picked: back to the usual mode.
+        LaunchedEffect(settings.transitEnabled) { if (!settings.transitEnabled && plan.transit) c.planner.setMode(plan.mode) }
 
         // ---- Bottom: status and Start ----
         CtrlCard(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = Gutter, vertical = 12.dp)) {
-            when (val s = plan.status) {
+            if (plan.transit && plan.status != PlanStatus.NoLocation) {
+                TransitResults(plan)
+            } else when (val s = plan.status) {
                 PlanStatus.Idle, PlanStatus.Computing -> Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(Modifier.size(22.dp), color = CtrlColors.AccentText, strokeWidth = 2.5.dp)
                     Spacer(Modifier.width(14.dp))
@@ -243,7 +255,7 @@ private fun EndRow(label: String, value: String, icon: ImageVector, divider: Boo
 }
 
 @Composable
-private fun ModeChip(mode: TravelMode, icon: ImageVector, label: Int, selected: TravelMode, modifier: Modifier) {
+private fun ModeChip(mode: TravelMode, icon: ImageVector, label: Int, selected: TravelMode?, modifier: Modifier, compact: Boolean = false) {
     val c = LocalContext.current.container
     val on = mode == selected
     Row(
@@ -254,13 +266,13 @@ private fun ModeChip(mode: TravelMode, icon: ImageVector, label: Int, selected: 
             .clickable {
                 c.planner.setMode(mode)
             }
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = if (compact) 4.dp else 10.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, Modifier.size(18.dp), tint = if (on) CtrlColors.OnAccent else CtrlColors.Text)
-        Spacer(Modifier.width(6.dp))
-        Text(stringResource(label), style = MaterialTheme.typography.labelLarge, color = if (on) CtrlColors.OnAccent else CtrlColors.Text, maxLines = 1)
+        Spacer(Modifier.width(if (compact) 4.dp else 6.dp))
+        Text(stringResource(label), style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge, color = if (on) CtrlColors.OnAccent else CtrlColors.Text, maxLines = 1)
     }
     // Remember the last mode for next time.
     LaunchedEffect(on) { if (on) c.settings.update { it.copy(travelMode = mode) } }

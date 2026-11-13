@@ -7,7 +7,7 @@
     <string name="tab_more">More</string>
 
     <!-- You page and settings shell -->
-    <string name="settings_subtitle">Map, units, navigation, voice and ETA sharing</string>
+    <string name="settings_subtitle">Map, units, navigation, voice, public transport and ETA sharing</string>
     <string name="you_offline">Offline · search and routing stay on this phone</string>
     <plurals name="you_maps_on_phone">
         <item quantity="one">%1$d map · %2$s</item>
@@ -92,6 +92,80 @@
     <string name="route_start_elsewhere">Navigation follows your position; the route was planned from the start point you chose.</string>
     <string name="try_again">Try again</string>
 
+    <!-- Public transport (Transitous) -->
+    <string name="mode_transit">Transit</string>
+    <string name="transit_leave_now">Leave now</string>
+    <string name="transit_depart_at">Depart %1$s</string>
+    <string name="transit_arrive_by">Arrive by %1$s</string>
+    <string name="transit_change_time">Change</string>
+    <string name="transit_when">When do you travel?</string>
+    <string name="transit_now">Now</string>
+    <string name="transit_depart">Depart at</string>
+    <string name="transit_arrive">Arrive by</string>
+    <string name="transit_today">Today</string>
+    <string name="transit_tomorrow">Tomorrow</string>
+    <string name="transit_search">Find journeys</string>
+    <string name="transit_searching">Asking Transitous for journeys…</string>
+    <string name="transit_offline_title">No connection to Transitous</string>
+    <string name="transit_offline_body">Public transport journeys come from Transitous online. Check your connection and try again; car, bike and foot routes work offline.</string>
+    <string name="transit_busy_title">Transitous is busy</string>
+    <string name="transit_error_title">Couldn\'t get journeys</string>
+    <string name="transit_error_body">Transitous didn\'t send a usable answer. Try again in a moment.</string>
+    <string name="transit_none_title">No public transport found</string>
+    <string name="transit_none_body">Transitous found no journey for this time. Try another time, or check on transitous.org that the area\'s timetables are included.</string>
+    <string name="transit_credit">Timetables: Transitous and its data sources ›</string>
+    <string name="transit_walk_only">Walk only</string>
+    <string name="transit_direct">Direct</string>
+    <plurals name="transit_transfers">
+        <item quantity="one">%1$d change</item>
+        <item quantity="other">%1$d changes</item>
+    </plurals>
+    <string name="transit_first_from">%1$s from %2$s</string>
+    <string name="transit_first_from_platform">%1$s from %2$s, platform %3$s</string>
+    <string name="transit_walk_to">Walk %1$s to %2$s</string>
+    <string name="transit_walk_to_dist">Walk %1$s (%2$s) to %3$s</string>
+    <string name="transit_stay_on_board">Stay on board</string>
+    <string name="transit_platform">Platform %1$s</string>
+    <string name="transit_platform_changed">changed</string>
+    <string name="transit_towards">to %1$s</string>
+    <plurals name="transit_stops">
+        <item quantity="one">%1$d stop</item>
+        <item quantity="other">%1$d stops</item>
+    </plurals>
+    <string name="transit_get_off">Get off at %1$s</string>
+    <string name="transit_cancelled">Cancelled</string>
+    <string name="transit_delay">%1$d min late</string>
+    <string name="transit_on_time">On time</string>
+    <string name="group_transit">Public transport</string>
+    <string name="transit_setting">Transit in route planning</string>
+    <string name="transit_setting_subtitle">Public transport journeys from Transitous, online</string>
+    <string name="transit_setting_footer">When you pick Transit, MapsCtrl sends your start and destination points and the time you chose to api.transitous.org, a free, community-run service, and nothing else. Turn this off to hide Transit; nothing is ever sent unless you pick it.</string>
+
+    <!-- Map layers and terrain -->
+    <string name="layers">Map layers</string>
+    <string name="hillshading">Hillshading</string>
+    <string name="hillshading_subtitle">Shades hills and mountains · %1$s, %2$s</string>
+    <string name="hillshading_no_data">Needs terrain data: download it for your maps first</string>
+    <string name="hillshading_footer">Terrain shading from elevation data on this phone. Contour lines aren\'t available yet.</string>
+    <string name="terrain_get">Terrain data</string>
+    <string name="terrain_get_subtitle">Download or delete it per map in Downloads</string>
+    <string name="group_terrain">Terrain data (hillshading)</string>
+    <string name="terrain_footer">Elevation data from Terrain Tiles (Mapzen / Tilezen, on AWS Open Data), in tiles of 1 by 1 degree. MapsCtrl shows the size and asks before downloading. %1$s on this phone.</string>
+    <string name="terrain_needs_map">Download a map first</string>
+    <plurals name="terrain_tiles">
+        <item quantity="one">%1$d tile</item>
+        <item quantity="other">%1$d tiles</item>
+    </plurals>
+    <string name="terrain_checking">Checking the size…</string>
+    <string name="terrain_downloading">Tile %1$d of %2$d · %3$s</string>
+    <string name="terrain_too_big">Too big for terrain data: use a smaller region</string>
+    <string name="terrain_complete">Downloaded · %1$s</string>
+    <string name="terrain_partial">On this phone: %1$d of %2$d</string>
+    <string name="terrain_confirm_title">Terrain data for %1$s?</string>
+    <string name="terrain_confirm_body">%1$s, about %2$s from elevation-tiles-prod.s3.amazonaws.com. Use Wi-Fi for big regions.</string>
+    <string name="terrain_delete_title">Delete terrain data for %1$s?</string>
+    <string name="terrain_delete_body">Hillshading stops showing in this area. Tiles another map still uses are kept.</string>
+
     <!-- Navigation -->
     <string name="nav_start">Start</string>
     <string name="nav_demo">Demo</string>
@@ -139,6 +213,18 @@
     <string name="turn_exit_left">take the exit on the left</string>
     <string name="turn_exit_right">take the exit on the right</string>
     <string name="turn_arrive">you have arrived</string>
+    <!-- With the street you turn onto: "turn left onto Rue Grimaldi". %1$s is the action above, %2$s the street. -->
+    <string name="turn_onto">%1$s onto %2$s</string>
+    <string name="turn_roundabout_onto">enter the roundabout towards %1$s</string>
+    <string name="turn_roundabout_n_onto">take exit %1$d onto %2$s</string>
+    <string-array name="turn_roundabout_exit_onto">
+        <item>take the 1st exit onto %1$s</item>
+        <item>take the 2nd exit onto %1$s</item>
+        <item>take the 3rd exit onto %1$s</item>
+        <item>take the 4th exit onto %1$s</item>
+        <item>take the 5th exit onto %1$s</item>
+        <item>take the 6th exit onto %1$s</item>
+    </string-array>
     <string name="voice_in_distance">In %1$s, %2$s</string>
     <string name="voice_then">then %1$s</string>
     <string name="voice_rerouting">Finding a new route</string>
@@ -184,7 +270,7 @@
     <string name="group_routing_data">Routing data</string>
     <string name="routing_data_empty">None yet</string>
     <string name="routing_data_footer">Routing data comes in tiles of 5 by 5 degrees from brouter.de. MapsCtrl asks before downloading the tiles a route needs.</string>
-    <string name="downloads_sources">Maps and search data: download.mapsforge.org. Routing data: brouter.de. Both are made from OpenStreetMap. MapsCtrl only connects when you start a download.</string>
+    <string name="downloads_sources">Maps and search data: download.mapsforge.org. Routing data: brouter.de. Both are made from OpenStreetMap. Terrain data: Terrain Tiles on AWS Open Data. MapsCtrl only connects when you start a download.</string>
     <string name="downloading_map">Map</string>
     <string name="downloading_search">Search data</string>
     <string name="download_failed">Download failed: %1$s</string>
@@ -297,7 +383,11 @@
     <string name="licences_subtitle">Map data, libraries and fonts</string>
     <string name="group_map_data">Map data</string>
     <string name="osm_licence">Open Database License</string>
-    <string name="osm_footer">Maps, search data and routing data are made from OpenStreetMap, available under the Open Database License.</string>
+    <string name="osm_footer">Maps, search data and routing data are made from OpenStreetMap, available under the Open Database License. Terrain data and public transport journeys come from the sources above.</string>
+    <string name="name_terrain_tiles" translatable="false">Terrain Tiles (Mapzen / Tilezen)</string>
+    <string name="lib_terrain_tiles">Elevation data for hillshading: SRTM, GMTED and ETOPO1 (USGS, NOAA), EU-DEM (Copernicus) and national sources such as © Kartverket and © Commonwealth of Australia (Geoscience Australia). Tap for the full list.</string>
+    <string name="name_transitous" translatable="false">Transitous</string>
+    <string name="lib_transitous">Public transport journeys, from timetables published by transport operators. Tap for the sources.</string>
     <string name="group_libraries">Libraries</string>
     <string name="lib_mapsforge">Offline vector map rendering</string>
     <string name="lib_brouter">Offline routing</string>

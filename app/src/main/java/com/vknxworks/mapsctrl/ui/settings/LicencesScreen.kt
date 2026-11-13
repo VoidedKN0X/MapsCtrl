@@ -34,6 +34,8 @@ fun LicencesScreen() {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(bottom = 24.dp)) {
             Group(stringResource(R.string.group_map_data), footer = stringResource(R.string.osm_footer)) {
                 GroupRow(stringResource(R.string.osm_credit), stringResource(R.string.osm_licence), value = stringResource(R.string.lic_odbl), onClick = { open("https://www.openstreetmap.org/copyright") })
+                GroupRow(stringResource(R.string.name_terrain_tiles), stringResource(R.string.lib_terrain_tiles), onClick = { open("https://github.com/tilezen/joerd/blob/master/docs/attribution.md") })
+                GroupRow(stringResource(R.string.name_transitous), stringResource(R.string.lib_transitous), onClick = { open("https://transitous.org/sources/") })
             }
             Group(stringResource(R.string.group_libraries)) {
                 GroupRow(stringResource(R.string.name_mapsforge), stringResource(R.string.lib_mapsforge), value = stringResource(R.string.lic_lgpl3), onClick = { open("https://github.com/mapsforge/mapsforge") })

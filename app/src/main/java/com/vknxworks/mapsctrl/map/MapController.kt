@@ -9,6 +9,7 @@ import com.vknxworks.mapsctrl.location.Fix
 import com.vknxworks.mapsctrl.routing.Route
 import com.vknxworks.mapsctrl.saved.SavedPlace
 import com.vknxworks.mapsctrl.saved.SavedTrack
+import com.vknxworks.mapsctrl.transit.TransitLeg
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.mapsforge.core.graphics.Cap
@@ -25,6 +26,10 @@ import org.mapsforge.map.android.view.MapView
 import org.mapsforge.map.datastore.MultiMapDataStore
 import org.mapsforge.map.layer.Layer
 import org.mapsforge.map.layer.cache.TileCache
+import org.mapsforge.map.layer.hills.AdaptiveClasyHillShading
+import org.mapsforge.map.layer.hills.DemFolderFS
+import org.mapsforge.map.layer.hills.HillsRenderConfig
+import org.mapsforge.map.layer.hills.MemoryCachingHgtReaderTileSource
 import org.mapsforge.map.layer.overlay.Polyline
 import org.mapsforge.map.layer.renderer.TileRendererLayer
 import org.mapsforge.map.model.common.Observer
@@ -71,6 +76,8 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
     private var dataStore: MultiMapDataStore? = null
     private var mapFiles: List<File> = emptyList()
     private var night = false
+    private var hills: HillsRenderConfig? = null
+    private var hillsKey: String? = null
 
     private val graphics = AndroidGraphicFactory.INSTANCE
     private val trackLayers = mutableListOf<Polyline>()
@@ -158,11 +165,30 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
         dataStore = store
         tileCache.purge()
         // Labels are drawn into the tiles: Mapsforge 0.25's separate label layer turns some street names upside down.
-        val r = TileRendererLayer(tileCache, store, view.model.mapViewPosition, false, true, false, graphics)
+        val r = TileRendererLayer(tileCache, store, view.model.mapViewPosition, false, true, false, graphics, hills)
         r.setXmlRenderTheme(theme())
         renderer = r
         layers.add(0, r)
         view.layerManager.redrawLayers()
+    }
+
+    /**
+     * Hillshading from the elevation tiles in [demDir], or off with null. [version] changes when tiles were added or
+     * removed, so the tile index is read again.
+     */
+    fun setHillshading(demDir: File?, version: Int) {
+        val key = demDir?.let { "${it.path}#$version" }
+        if (key == hillsKey) return
+        hillsKey = key
+        hills?.interruptAndDestroy()
+        hills = demDir?.let { d ->
+            runCatching {
+                // The strength comes from the theme (stronger at night, on the dark map).
+                HillsRenderConfig(MemoryCachingHgtReaderTileSource(DemFolderFS(d), AdaptiveClasyHillShading(), graphics))
+                    .indexOnThread()
+            }.getOrNull()
+        }
+        rebuildRenderer()
     }
 
     /** The area covered by the downloaded maps, or null with none. */
@@ -178,6 +204,39 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
         routeLine.paintStroke.color = if (night) 0xFFB48CFF.toInt() else 0xFF7A45F0.toInt()
         routeCasing.requestRedraw()
         routeLine.requestRedraw()
+    }
+
+    private val transitLayers = mutableListOf<Polyline>()
+
+    /**
+     * A public transport journey: each ride in its line's colour (violet when the timetable has none) on a casing,
+     * walks as grey dashes. Null clears it.
+     */
+    fun setTransit(legs: List<TransitLeg>?) {
+        val layers = view.layerManager.layers
+        transitLayers.forEach { layers.remove(it) }
+        transitLayers.clear()
+        val density = context.resources.displayMetrics.density
+        var index = layers.indexOf(overlay).coerceAtLeast(1)
+        for (leg in legs.orEmpty()) {
+            val pts = leg.geometry.map { LatLong(it.lat, it.lon) }
+            if (pts.size < 2) continue
+            val parts = if (leg.kind.isTransit) {
+                val casing = line(if (night) 0xFF0E0E11.toInt() else 0xFFFFFFFF.toInt(), 9f)
+                val color = leg.color ?: if (night) 0xFFB48CFF.toInt() else 0xFF7A45F0.toInt()
+                listOf(casing, line(color, 6f))
+            } else {
+                val walk = line(if (night) 0xFFB9B9C2.toInt() else 0xFF5C5C66.toInt(), 4f)
+                walk.paintStroke.setDashPathEffect(floatArrayOf(2f * density, 7f * density))
+                listOf(walk)
+            }
+            for (p in parts) {
+                p.latLongs.addAll(pts)
+                transitLayers += p
+                layers.add(index++, p)
+            }
+        }
+        view.layerManager.redrawLayers()
     }
 
     fun setTracks(tracks: List<SavedTrack>) {
@@ -247,16 +306,18 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
     fun zoomOut() = view.model.mapViewPosition.zoomOut()
 
     /** Shows the whole box (a route, search results), leaving room for panels at the top and bottom. */
-    fun fit(points: List<LatLon>, maxZoom: Int = 17) {
+    fun fit(points: List<LatLon>, maxZoom: Int = 17, top: Double = 0.25, bottom: Double = 0.25) {
         if (points.isEmpty()) return
         if (points.size == 1) { moveTo(points[0], maxZoom); return }
         val box = BoundingBox(points.minOf { it.lat }, points.minOf { it.lon }, points.maxOf { it.lat }, points.maxOf { it.lon })
         val w = view.width.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels
         val h = view.height.takeIf { it > 0 } ?: context.resources.displayMetrics.heightPixels
-        // Use the middle 60% of the height: panels cover the rest.
-        val dim = org.mapsforge.core.model.Dimension((w * 0.8).toInt(), (h * 0.5).toInt())
+        // Use the part of the height between the panels at the top ([top]) and bottom ([bottom]).
+        val free = (1.0 - top - bottom).coerceIn(0.15, 1.0)
+        val dim = org.mapsforge.core.model.Dimension((w * 0.8).toInt(), (h * free * 0.9).toInt())
         val z = LatLongUtils.zoomForBounds(dim, box, view.model.displayModel.tileSize).coerceIn(2.toByte(), maxZoom.toByte())
-        view.model.mapViewPosition.mapPosition = MapPosition(box.centerPoint, z)
+        val c = box.centerPoint
+        moveTo(LatLon(c.latitude, c.longitude), z.toInt(), animate = false, lift = (bottom - top) / 2)
     }
 
     /** Turns the map so [heading] (degrees) points up; 0 is north up. */
@@ -270,6 +331,7 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
     }
 
     fun destroy() {
+        runCatching { hills?.interruptAndDestroy() }
         runCatching { view.destroyAll() }
         dataStore?.close()
         AndroidGraphicFactory.clearResourceMemoryCache()

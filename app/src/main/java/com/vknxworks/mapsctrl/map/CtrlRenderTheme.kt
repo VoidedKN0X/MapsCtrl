@@ -19,6 +19,8 @@ object CtrlRenderTheme {
         val boundary: String, val aeroway: String,
         val text: String, val textHalo: String, val textMuted: String, val placeText: String,
         val poi: String, val poiGlyph: String, val poiTransport: String, val poiHealth: String,
+        /** How strong the terrain shading is, 0..255. */
+        val hillMagnitude: Int = 90,
     )
 
     val Day = Palette(
@@ -43,6 +45,7 @@ object CtrlRenderTheme {
         boundary = "#5C566A", aeroway = "#26262B",
         text = "#C9C9CF", textHalo = "#141417", textMuted = "#8E8E96", placeText = "#E8E8EC",
         poi = "#55555F", poiGlyph = "#E8E8EC", poiTransport = "#4A5B6E", poiHealth = "#8E4A4A",
+        hillMagnitude = 140,
     )
 
     /** Writes theme.xml and symbols/ into [dir] and returns the theme file. */
@@ -93,6 +96,9 @@ object CtrlRenderTheme {
     <rule e="way" k="aeroway" v="aerodrome|airport" zoom-min="10"><area fill="${c.aeroway}"/></rule>
     <rule e="way" k="aeroway" v="apron|terminal" zoom-min="13"><area fill="${c.aeroway}" stroke="${c.buildingLine}" stroke-width="0.2"/></rule>
   </rule>
+
+  <!-- Terrain shading: drawn only when hillshading is on and elevation data is on the phone. -->
+  <hillshading zoom-min="6" zoom-max="18" magnitude="${c.hillMagnitude}"/>
 
   <!-- Water -->
   <rule e="way" k="*" v="*" closed="yes">

@@ -20,6 +20,10 @@ object FakeWords : InstructionWords {
         TurnKind.STRAIGHT -> "continue straight"
         else -> kind.name.lowercase()
     }
+    override fun actionOnto(kind: TurnKind, exit: Int, street: String) = when (kind) {
+        TurnKind.ROUNDABOUT, TurnKind.ROUNDABOUT_LEFT -> "take the ${Instructions.ordinal(exit)} exit onto $street"
+        else -> "${action(kind, exit)} onto $street"
+    }
     override fun inDistance(distance: String, action: String) = "In $distance, $action"
     override fun then(action: String) = "then $action"
     override fun meters(n: Int) = "$n m"
@@ -64,6 +68,22 @@ class InstructionsTest {
         assertEquals("12 km", Instructions.displayDistance(FakeWords, 12345.0, Units.METRIC))
         assertEquals("3.4 mi", Instructions.displayDistance(FakeWords, 5472.0, Units.IMPERIAL))
         assertEquals("330 ft", Instructions.displayDistance(FakeWords, 100.0, Units.IMPERIAL))
+    }
+
+    @Test
+    fun streetNames() {
+        val named = left.copy(street = "Rue Grimaldi")
+        assertEquals("Turn left onto Rue Grimaldi", Instructions.title(FakeWords, named))
+        assertEquals("In 300 m, turn left onto Rue Grimaldi", Instructions.spoken(FakeWords, named, 290.0, Units.METRIC))
+        assertEquals("Turn left onto Rue Grimaldi", Instructions.spoken(FakeWords, named, 15.0, Units.METRIC))
+        val rb = TurnHint(5, TurnKind.ROUNDABOUT, 2, 0, street = "Avenue de la Costa")
+        assertEquals("Take the 2nd exit onto Avenue de la Costa", Instructions.title(FakeWords, rb))
+        // The "then" part stays short, without its street.
+        val next = TurnHint(12, TurnKind.KEEP_RIGHT, 0, 20, street = "Boulevard Albert 1er")
+        assertEquals("In 200 m, turn left onto Rue Grimaldi, then keep right", Instructions.spoken(FakeWords, named, 210.0, Units.METRIC, next, 80.0))
+        // No street on arriving or a U-turn, even if one was set; blank names are ignored.
+        assertEquals("You have arrived", Instructions.title(FakeWords, TurnHint(20, TurnKind.ARRIVE, 0, 0, street = "Place du Casino")))
+        assertEquals("Turn left", Instructions.title(FakeWords, left.copy(street = "  ")))
     }
 
     @Test

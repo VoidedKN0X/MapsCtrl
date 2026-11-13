@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DirectionsCar
+import androidx.compose.material.icons.outlined.DirectionsTransit
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.RecordVoiceOver
@@ -90,6 +91,10 @@ fun SettingsScreen() {
                 GroupSwitch(stringResource(R.string.speed_limit), stringResource(R.string.speed_limit_subtitle), s.speedLimit, Icons.Outlined.Speed) { v -> set { it.copy(speedLimit = v) } }
                 GroupSwitch(stringResource(R.string.speed_cameras), stringResource(R.string.speed_cameras_subtitle), s.speedCameras, Icons.Outlined.CameraAlt) { v -> set { it.copy(speedCameras = v) } }
                 GroupSwitch(stringResource(R.string.keep_screen_on), stringResource(R.string.keep_screen_on_subtitle), s.keepScreenOn, Icons.Outlined.LightMode) { v -> set { it.copy(keepScreenOn = v) } }
+            }
+
+            Group(stringResource(R.string.group_transit), footer = stringResource(R.string.transit_setting_footer)) {
+                GroupSwitch(stringResource(R.string.transit_setting), stringResource(R.string.transit_setting_subtitle), s.transitEnabled, Icons.Outlined.DirectionsTransit) { v -> set { it.copy(transitEnabled = v) } }
             }
 
             NtfyGroup(s, ::set)

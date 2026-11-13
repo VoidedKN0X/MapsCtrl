@@ -64,6 +64,7 @@ import com.vknxworks.mapsctrl.search.Place
 import com.vknxworks.mapsctrl.search.SearchResult
 import com.vknxworks.mapsctrl.settings.AppSettings
 import com.vknxworks.mapsctrl.settings.MapStyle
+import com.vknxworks.mapsctrl.transit.TransitStatus
 import com.vknxworks.mapsctrl.ui.components.CtrlBottomBar
 import com.vknxworks.mapsctrl.ui.components.LocalBottomClearance
 import com.vknxworks.mapsctrl.ui.components.TabItem
@@ -154,8 +155,23 @@ private fun HomeContent(start: AppSettings) {
     // ---- Feed the map ----
     LaunchedEffect(installed) { controller.setMaps(installed.map { c.maps.mapFile(it.path) }.filter { it.exists() }) }
     LaunchedEffect(night) { controller.setNight(night); controller.setNightOverlay(night) }
-    val route = nav?.route ?: (plan.status as? PlanStatus.Ready)?.route
+    val route = nav?.route ?: (plan.status as? PlanStatus.Ready)?.route?.takeIf { !plan.transit }
     LaunchedEffect(route, night) { controller.setRoute(route) }
+    // Hillshading: on in the layers sheet, with elevation tiles on the phone.
+    val demTiles by c.terrain.files.collectAsStateWithLifecycle()
+    LaunchedEffect(settings.hillshading, demTiles) {
+        controller.setHillshading(if (settings.hillshading && demTiles.isNotEmpty()) c.terrain.dir else null, demTiles.keys.hashCode())
+    }
+    // Public transport: the journey you picked, drawn leg by leg.
+    val transit by c.transit.state.collectAsStateWithLifecycle()
+    val journey = if (plan.transit && plan.destination != null && nav == null) {
+        (transit.status as? TransitStatus.Ready)?.plan?.let { c.transit.journeys(it).getOrNull(transit.selected) }
+    } else null
+    LaunchedEffect(journey, night) {
+        controller.setTransit(journey?.legs)
+        // Between the planning card on top and the journeys at the bottom.
+        if (journey != null) controller.fit(journey.legs.flatMap { it.geometry }, top = 0.3, bottom = 0.5)
+    }
     LaunchedEffect(tracks, night) { controller.setTracks(tracks) }
     LaunchedEffect(recordingPts) { controller.setRecording(recordingPts) }
     LaunchedEffect(savedPlaces) { controller.setSaved(savedPlaces) }

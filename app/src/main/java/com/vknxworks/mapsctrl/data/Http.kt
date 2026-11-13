@@ -9,8 +9,9 @@ import java.net.URL
 import java.util.concurrent.CancellationException
 
 /**
- * The only network code in MapsCtrl: plain HTTPS GETs for downloads you start, and the optional ntfy POST.
- * No cookies, no tracking headers; the User-Agent names only the app and its version.
+ * The only network code in MapsCtrl: plain HTTPS GETs for downloads you start, transit routes you ask for
+ * (Transitous), and the optional ntfy POST. No cookies, no tracking headers; the User-Agent names only the app
+ * and its version (plus the project's URL for Transitous, which asks API users for a contact).
  */
 object Http {
     private val userAgent = "MapsCtrl/${BuildConfig.VERSION_NAME}"
@@ -26,11 +27,59 @@ object Http {
         return c
     }
 
+    /**
+     * A GET for an API answer (Transitous): JSON only, [userAgent] as the services ask for, short timeouts, the
+     * whole request bounded by [deadlineMs], and at most [maxBytes] read; anything larger is refused.
+     */
+    fun getJsonCapped(url: String, userAgent: String, maxBytes: Int, deadlineMs: Long = 30_000): String {
+        val start = System.nanoTime()
+        val c = open(url)
+        c.connectTimeout = 10_000
+        c.readTimeout = 20_000
+        c.instanceFollowRedirects = false
+        c.setRequestProperty("User-Agent", userAgent)
+        c.setRequestProperty("Accept", "application/json")
+        try {
+            val code = c.responseCode
+            if (code !in 200..299) throw HttpStatusException(code)
+            val declared = c.contentLengthLong
+            if (declared > maxBytes) throw IOException("Response too large")
+            val out = java.io.ByteArrayOutputStream(if (declared in 1..maxBytes) declared.toInt() else 64 * 1024)
+            c.inputStream.use { input ->
+                val buf = ByteArray(16 * 1024)
+                while (true) {
+                    if ((System.nanoTime() - start) / 1_000_000 > deadlineMs) throw IOException("Timed out")
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    if (out.size() + n > maxBytes) throw IOException("Response too large")
+                    out.write(buf, 0, n)
+                }
+            }
+            return out.toString(Charsets.UTF_8.name())
+        } finally {
+            c.disconnect()
+        }
+    }
+
+    /** An HTTP error status from an API. */
+    class HttpStatusException(val code: Int) : IOException("HTTP $code")
+
     fun getText(url: String): String {
         val c = open(url)
         try {
             if (c.responseCode !in 200..299) throw IOException("HTTP ${c.responseCode}")
             return c.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            c.disconnect()
+        }
+    }
+
+    /** A HEAD request: the status and the file's size (-1 when the server doesn't say). */
+    fun head(url: String): Pair<Int, Long> {
+        val c = open(url)
+        c.requestMethod = "HEAD"
+        try {
+            return c.responseCode to c.contentLengthLong
         } finally {
             c.disconnect()
         }

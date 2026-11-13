@@ -42,8 +42,11 @@ enum class TurnKind {
     }
 }
 
-/** One turn instruction at [index] in the route's points. [exit] is the roundabout exit (0 when not a roundabout). */
-data class TurnHint(val index: Int, val kind: TurnKind, val exit: Int, val angle: Int)
+/**
+ * One turn instruction at [index] in the route's points. [exit] is the roundabout exit (0 when not a roundabout).
+ * [street] is the name (or number) of the road you turn onto, when MapsCtrl could find it (see [StreetNames]).
+ */
+data class TurnHint(val index: Int, val kind: TurnKind, val exit: Int, val angle: Int, val street: String? = null)
 
 /** A stretch of road with the same OSM tags, from [startIndex] to [endIndex] in the route's points. */
 data class WaySection(val startIndex: Int, val endIndex: Int, val wayTags: Map<String, String>, val nodeTags: Map<String, String>)

@@ -24,7 +24,19 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LocationSearching
+import androidx.compose.material.icons.outlined.Terrain
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.pluralStringResource
+import com.vknxworks.mapsctrl.ui.components.CtrlBottomSheet
+import com.vknxworks.mapsctrl.ui.components.Group
+import com.vknxworks.mapsctrl.ui.components.GroupRow
+import com.vknxworks.mapsctrl.ui.components.GroupSwitch
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
@@ -105,6 +117,9 @@ fun MapOverlay(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.End,
         ) {
+            var layersOpen by remember { mutableStateOf(false) }
+            CtrlSquareButton(Icons.Outlined.Layers, stringResource(R.string.layers), onClick = { layersOpen = true })
+            if (layersOpen) LayersSheet(onDismiss = { layersOpen = false })
             if (camera.rotation != 0f) {
                 CtrlSquareButton(Icons.Filled.Navigation, stringResource(R.string.north_up), onClick = {
                     if (state.follow == Follow.COMPASS) state.follow = Follow.FOLLOW
@@ -226,6 +241,38 @@ private fun niceNumber(max: Double): Double {
     val f = max / exp
     val n = when { f >= 5 -> 5.0; f >= 2 -> 2.0; else -> 1.0 }
     return n * exp
+}
+
+/** Map layers: hillshading, with a way to get the terrain data it needs. */
+@Composable
+private fun LayersSheet(onDismiss: () -> Unit) {
+    val c = LocalContext.current.container
+    val scope = rememberCoroutineScope()
+    val fmt = rememberFmt()
+    val settings by c.settings.settings.collectAsStateWithLifecycle()
+    val tiles by c.terrain.files.collectAsStateWithLifecycle()
+    CtrlBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
+            Text(stringResource(R.string.layers), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = Gutter))
+            Group(footer = stringResource(R.string.hillshading_footer)) {
+                GroupSwitch(
+                    stringResource(R.string.hillshading),
+                    if (tiles.isEmpty()) stringResource(R.string.hillshading_no_data)
+                    else stringResource(R.string.hillshading_subtitle, pluralStringResource(R.plurals.terrain_tiles, tiles.size, tiles.size), fmt.bytes(tiles.values.sum())),
+                    settings.hillshading,
+                    Icons.Outlined.Terrain,
+                ) { v -> scope.launch { c.settings.update { it.copy(hillshading = v) } } }
+                GroupRow(
+                    stringResource(R.string.terrain_get),
+                    stringResource(R.string.terrain_get_subtitle),
+                    icon = Icons.Outlined.Download,
+                    showChevron = true,
+                    onClick = { onDismiss(); c.openTab.value = TAB_DOWNLOADS },
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+    }
 }
 
 @Composable

@@ -10,6 +10,9 @@ interface InstructionWords {
     /** The action in lower case, as in the middle of a sentence: "turn left", "take the 2nd exit". */
     fun action(kind: TurnKind, exit: Int): String
 
+    /** The action with the street you turn onto: "turn left onto Rue Grimaldi", "take the 2nd exit onto Avenue X". */
+    fun actionOnto(kind: TurnKind, exit: Int, street: String): String
+
     /** "In %1$s, %2$s" -> "In 300 m, turn left". */
     fun inDistance(distance: String, action: String): String
 
@@ -25,16 +28,23 @@ interface InstructionWords {
 
 object Instructions {
 
-    /** "Turn left" for the next-turn card: the action with a capital letter. */
+    /** The action, with the street when it's known: "turn left onto Rue Grimaldi". */
+    fun phrase(words: InstructionWords, hint: TurnHint): String {
+        val street = hint.street?.takeIf { it.isNotBlank() && StreetNames.wantsStreet(hint.kind) }
+        return if (street != null) words.actionOnto(hint.kind, hint.exit, street) else words.action(hint.kind, hint.exit)
+    }
+
+    /** "Turn left onto Rue Grimaldi" for the next-turn card: the phrase with a capital letter. */
     fun title(words: InstructionWords, hint: TurnHint): String =
-        words.action(hint.kind, hint.exit).replaceFirstChar { it.titlecase(Locale.getDefault()) }
+        phrase(words, hint).replaceFirstChar { it.titlecase(Locale.getDefault()) }
 
     /**
-     * What the voice says [distanceM] before a turn: "In 300 m, turn left", or just "Turn left" when it's right
-     * there. [next] is the turn after it when that one follows within 150 m ("..., then keep right").
+     * What the voice says [distanceM] before a turn: "In 300 m, turn left onto Rue Grimaldi", or just "Turn left
+     * onto Rue Grimaldi" when it's right there. [next] is the turn after it when that one follows within 150 m
+     * ("..., then keep right"; without its street, to keep it short).
      */
     fun spoken(words: InstructionWords, hint: TurnHint, distanceM: Double, units: Units, next: TurnHint? = null, nextGapM: Double = Double.MAX_VALUE): String {
-        val action = words.action(hint.kind, hint.exit)
+        val action = phrase(words, hint)
         val first = if (distanceM < 40) action.replaceFirstChar { it.titlecase(Locale.getDefault()) }
         else words.inDistance(voiceDistance(words, distanceM, units), action)
         if (next != null && nextGapM < 150 && next.kind != TurnKind.STRAIGHT) {

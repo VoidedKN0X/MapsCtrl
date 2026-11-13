@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Route
+import androidx.compose.material.icons.outlined.Terrain
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -63,6 +64,8 @@ import com.vknxworks.mapsctrl.data.CatalogItem
 import com.vknxworks.mapsctrl.data.DirectoryIndex
 import com.vknxworks.mapsctrl.data.DownloadState
 import com.vknxworks.mapsctrl.data.InstalledMap
+import com.vknxworks.mapsctrl.data.TerrainJob
+import com.vknxworks.mapsctrl.data.TerrainRegion
 import com.vknxworks.mapsctrl.ui.common.rememberFmt
 import com.vknxworks.mapsctrl.ui.components.ConfirmDialog
 import com.vknxworks.mapsctrl.ui.components.CtrlButton
@@ -231,6 +234,7 @@ private fun InstalledScreen(onAdd: () -> Unit) {
                 )
             }
         }
+        TerrainGroup()
         Text(
             stringResource(R.string.downloads_sources),
             style = MaterialTheme.typography.bodySmall,
@@ -255,6 +259,90 @@ private fun InstalledScreen(onAdd: () -> Unit) {
             confirm = stringResource(R.string.delete),
             onDismiss = { deletingTile = null },
             onConfirm = { scope.launch { c.segments.delete(t) }; deletingTile = null },
+        )
+    }
+}
+
+/** Terrain data for hillshading, per downloaded map: download (after showing the size), progress, delete. */
+@Composable
+private fun TerrainGroup() {
+    val c = LocalContext.current.container
+    val scope = rememberCoroutineScope()
+    val fmt = rememberFmt()
+    val installed by c.maps.installed.collectAsStateWithLifecycle()
+    val tiles by c.terrain.files.collectAsStateWithLifecycle()
+    val job by c.terrain.job.collectAsStateWithLifecycle()
+    var regions by remember { mutableStateOf<List<TerrainRegion>>(emptyList()) }
+    var deleting by remember { mutableStateOf<TerrainRegion?>(null) }
+    LaunchedEffect(installed, tiles) { regions = c.terrain.regions(installed.map { it to c.maps.mapFile(it.path) }) }
+
+    Group(stringResource(R.string.group_terrain), footer = stringResource(R.string.terrain_footer, fmt.bytes(tiles.values.sum()))) {
+        if (regions.isEmpty()) GroupRow(stringResource(R.string.terrain_needs_map), icon = Icons.Outlined.Terrain)
+        for (r in regions) {
+            val j = job
+            val mine = when (j) {
+                is TerrainJob.Sizing -> j.mapPath == r.mapPath
+                is TerrainJob.Confirm -> j.mapPath == r.mapPath
+                is TerrainJob.Running -> j.mapPath == r.mapPath
+                is TerrainJob.Failed -> j.mapPath == r.mapPath
+                null -> false
+            }
+            val sub = when {
+                mine && j is TerrainJob.Sizing -> stringResource(R.string.terrain_checking)
+                mine && j is TerrainJob.Running -> stringResource(R.string.terrain_downloading, j.done, j.total, fmt.bytes(j.bytes))
+                mine && j is TerrainJob.Failed -> stringResource(R.string.download_failed, j.message)
+                r.tooBig -> stringResource(R.string.terrain_too_big)
+                r.complete -> stringResource(R.string.terrain_complete, pluralStringResource(R.plurals.terrain_tiles, r.tiles.size, r.tiles.size))
+                r.have > 0 -> stringResource(R.string.terrain_partial, r.have, r.tiles.size)
+                else -> pluralStringResource(R.plurals.terrain_tiles, r.tiles.size, r.tiles.size)
+            }
+            GroupRow(
+                r.mapName,
+                sub,
+                icon = if (mine && j is TerrainJob.Failed) Icons.Outlined.ErrorOutline else Icons.Outlined.Terrain,
+                iconTint = if (mine && j is TerrainJob.Failed) CtrlColors.Error else CtrlColors.Text,
+                trailing = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        when {
+                            mine && (j is TerrainJob.Running || j is TerrainJob.Sizing) ->
+                                CtrlSquareButton(Icons.Outlined.Close, stringResource(R.string.cancel), onClick = { c.terrain.cancel() }, size = 40.dp)
+                            mine && j is TerrainJob.Failed ->
+                                CtrlSquareButton(Icons.Outlined.Close, stringResource(R.string.close), onClick = { c.terrain.dismiss() }, size = 40.dp)
+                            else -> {
+                                if (!r.complete && !r.tooBig) {
+                                    CtrlSquareButton(Icons.Outlined.Download, stringResource(R.string.download), onClick = { c.terrain.prepare(r) }, enabled = j == null || j is TerrainJob.Failed, size = 40.dp)
+                                }
+                                if (r.have > 0) CtrlSquareButton(Icons.Outlined.Delete, stringResource(R.string.delete), onClick = { deleting = r }, size = 40.dp)
+                            }
+                        }
+                    }
+                },
+            )
+            if (mine && j is TerrainJob.Running) {
+                Column(Modifier.fillMaxWidth().padding(start = 52.dp, end = 16.dp, bottom = 12.dp)) {
+                    CtrlProgressBar(if (j.total > 0) j.done.toFloat() / j.total else 0f, color = CtrlColors.Accent)
+                }
+            }
+        }
+    }
+
+    (job as? TerrainJob.Confirm)?.let { cf ->
+        val name = regions.firstOrNull { it.mapPath == cf.mapPath }?.mapName ?: ""
+        com.vknxworks.mapsctrl.ui.components.CtrlAlertDialog(
+            onDismissRequest = { c.terrain.dismiss() },
+            title = { Text(stringResource(R.string.terrain_confirm_title, name), style = MaterialTheme.typography.titleLarge) },
+            text = { Text(stringResource(R.string.terrain_confirm_body, pluralStringResource(R.plurals.terrain_tiles, cf.tiles.size, cf.tiles.size), fmt.bytes(cf.bytes)), style = MaterialTheme.typography.bodyMedium) },
+            confirmButton = { TextButton(onClick = { c.terrain.download() }, enabled = cf.tiles.isNotEmpty()) { Text(stringResource(R.string.download)) } },
+            dismissButton = { TextButton(onClick = { c.terrain.dismiss() }) { Text(stringResource(R.string.cancel), color = CtrlColors.Text) } },
+        )
+    }
+    deleting?.let { r ->
+        ConfirmDialog(
+            title = stringResource(R.string.terrain_delete_title, r.mapName),
+            body = stringResource(R.string.terrain_delete_body),
+            confirm = stringResource(R.string.delete),
+            onDismiss = { deleting = null },
+            onConfirm = { scope.launch { c.terrain.delete(r, regions) }; deleting = null },
         )
     }
 }

@@ -30,6 +30,13 @@ class ResourceWords(private val context: Context) : InstructionWords {
         TurnKind.ARRIVE -> s(R.string.turn_arrive)
     }
 
+    override fun actionOnto(kind: TurnKind, exit: Int, street: String): String = when (kind) {
+        TurnKind.ROUNDABOUT, TurnKind.ROUNDABOUT_LEFT ->
+            if (exit > 0) context.resources.getStringArray(R.array.turn_roundabout_exit_onto).let { a -> if (exit <= a.size) a[exit - 1].format(street) else s(R.string.turn_roundabout_n_onto, exit, street) }
+            else s(R.string.turn_roundabout_onto, street)
+        else -> s(R.string.turn_onto, action(kind, exit), street)
+    }
+
     override fun inDistance(distance: String, action: String) = s(R.string.voice_in_distance, distance, action)
     override fun then(action: String) = s(R.string.voice_then, action)
     override fun meters(n: Int) = s(R.string.unit_m, n)
