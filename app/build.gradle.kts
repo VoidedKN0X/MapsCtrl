@@ -44,6 +44,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // -PreleaseTest: a minified build that installs next to the real app, for testing R8 on a phone.
+            if (project.hasProperty("releaseTest")) applicationIdSuffix = ".releasetest"
             signingConfig = when {
                 releaseSigningComplete -> signingConfigs.getByName("release")
                 isCi -> throw GradleException(
@@ -138,6 +140,9 @@ dependencies {
     // Offline vector maps (LGPL-3.0).
     implementation(libs.mapsforge.map.android)
     implementation(libs.mapsforge.map.reader)
+
+    // SQLite with R-tree and FTS5 for the POI search files (Android's own SQLite has neither).
+    implementation(libs.androidx.sqlite.bundled)
 
     testImplementation(libs.junit)
 }

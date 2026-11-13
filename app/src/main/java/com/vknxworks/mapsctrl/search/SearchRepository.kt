@@ -42,7 +42,7 @@ class SearchRepository(private val maps: MapRepository) {
         val files = maps.poiFiles()
         val keep = files.map { it.path }.toSet()
         open.keys.filterNot { it in keep }.forEach { open.remove(it)?.close() }
-        files.mapNotNull { f -> open[f.path] ?: runCatching { PoiDatabase(f) }.getOrNull()?.also { open[f.path] = it } }
+        files.mapNotNull { f -> open[f.path] ?: runCatching { PoiDatabase(f) }.onFailure { android.util.Log.w("Search", "can't open $f", it) }.getOrNull()?.also { open[f.path] = it } }
     }
 
     suspend fun hasSearchData(): Boolean = maps.poiFiles().isNotEmpty()

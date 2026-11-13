@@ -12,6 +12,7 @@ serialization = "1.9.0"
 coroutines = "1.10.2"
 mapsforge = "0.25.0"
 junit = "4.13.2"
+sqlite = "2.6.2"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -32,6 +33,7 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 mapsforge-map-android = { module = "org.mapsforge:mapsforge-map-android", version.ref = "mapsforge" }
 mapsforge-map-reader = { module = "org.mapsforge:mapsforge-map-reader", version.ref = "mapsforge" }
 junit = { module = "junit:junit", version.ref = "junit" }
+androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -9,7 +9,10 @@
     <!-- You page and settings shell -->
     <string name="settings_subtitle">Map, units, navigation, voice and ETA sharing</string>
     <string name="you_offline">Offline · search and routing stay on this phone</string>
-    <string name="you_maps_on_phone">%1$d maps · %2$s</string>
+    <plurals name="you_maps_on_phone">
+        <item quantity="one">%1$d map · %2$s</item>
+        <item quantity="other">%1$d maps · %2$s</item>
+    </plurals>
 
     <!-- Map screen -->
     <string name="search_hint">Search places, addresses, coordinates</string>
@@ -60,6 +63,7 @@
 
     <!-- Route planning -->
     <string name="route_from">From</string>
+    <string name="route_to_label">To</string>
     <string name="route_my_location">My location</string>
     <string name="route_tap_map">Tap the map…</string>
     <string name="route_swap">Swap start and destination</string>
@@ -154,7 +158,10 @@
 
     <!-- Downloads -->
     <string name="stat_maps">Maps</string>
-    <string name="stat_maps_count">%1$d on this phone</string>
+    <plurals name="stat_maps_count">
+        <item quantity="one">%1$d map on this phone</item>
+        <item quantity="other">%1$d maps on this phone</item>
+    </plurals>
     <string name="stat_routing">Routing data</string>
     <string name="stat_free">%1$s free</string>
     <string name="group_your_maps">Your maps</string>
@@ -192,6 +199,12 @@
     <string name="delete_map_body">The map and its search data are removed from this phone. You can download them again any time.</string>
     <string name="delete_routing_title">Delete routing tile %1$s?</string>
     <string name="delete_routing_body">Routes in this area need it again later; MapsCtrl will ask before downloading it.</string>
+
+    <string name="legacy_label">From MapsCtrl 0.2.0</string>
+    <string name="legacy_title">Delete old maps</string>
+    <string name="legacy_subtitle">%1$d map files, %2$s</string>
+    <string name="legacy_footer">MapsCtrl 0.3.0 uses a new map format, so maps downloaded with 0.2.0 can\'t be used anymore. Download your regions again above, then free the space.</string>
+    <string name="legacy_confirm">The old map files are removed from this phone. Your saved places and settings in 0.3.0 aren\'t affected.</string>
 
     <!-- Saved -->
     <string name="group_recording">Track recording</string>
@@ -290,6 +303,9 @@
     <string name="lib_brouter">Offline routing</string>
     <string name="lib_androidsvg">Map symbols</string>
     <string name="lib_androidx">The app\'s interface</string>
+    <string name="lib_sqlite">Reads the offline search data</string>
+    <string name="name_sqlite" translatable="false">SQLite (AndroidX sqlite-bundled)</string>
+    <string name="lic_public_domain">Public domain</string>
     <string name="lib_kotlin">Language and libraries</string>
     <string name="group_fonts">Fonts</string>
     <string name="font_bundled">Bundled in the app</string>

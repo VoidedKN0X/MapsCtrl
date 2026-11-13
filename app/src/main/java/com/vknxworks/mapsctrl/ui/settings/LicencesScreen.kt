@@ -39,6 +39,7 @@ fun LicencesScreen() {
                 GroupRow(stringResource(R.string.name_mapsforge), stringResource(R.string.lib_mapsforge), value = stringResource(R.string.lic_lgpl3), onClick = { open("https://github.com/mapsforge/mapsforge") })
                 GroupRow(stringResource(R.string.name_brouter), stringResource(R.string.lib_brouter), value = stringResource(R.string.lic_mit), onClick = { open("https://github.com/abrensch/brouter") })
                 GroupRow(stringResource(R.string.name_androidsvg), stringResource(R.string.lib_androidsvg), value = stringResource(R.string.lic_apache2), onClick = { open("https://github.com/BigBadaboom/androidsvg") })
+                GroupRow(stringResource(R.string.name_sqlite), stringResource(R.string.lib_sqlite), value = stringResource(R.string.lic_public_domain), onClick = { open("https://sqlite.org/copyright.html") })
                 GroupRow(stringResource(R.string.name_androidx), stringResource(R.string.lib_androidx), value = stringResource(R.string.lic_apache2), onClick = { open("https://developer.android.com/jetpack/androidx") })
                 GroupRow(stringResource(R.string.name_kotlin), stringResource(R.string.lib_kotlin), value = stringResource(R.string.lic_apache2), onClick = { open("https://kotlinlang.org") })
             }

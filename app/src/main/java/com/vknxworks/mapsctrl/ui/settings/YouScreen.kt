@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -119,7 +120,7 @@ fun YouScreen() {
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        stringResource(R.string.you_maps_on_phone, installed.size, fmt.bytes(installed.sumOf { it.mapBytes + it.poiBytes })),
+                        pluralStringResource(R.plurals.you_maps_on_phone, installed.size, installed.size, fmt.bytes(installed.sumOf { it.mapBytes + it.poiBytes })),
                         style = CtrlType.Data,
                         color = CtrlColors.Muted,
                     )

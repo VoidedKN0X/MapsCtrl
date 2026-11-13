@@ -236,7 +236,7 @@ private fun HomeContent(start: AppSettings) {
             p != null && !(p.lat == 0.0 && p.lon == 0.0) -> {
                 val label = uri.substringAfter('(', "").substringBefore(')').takeIf { it.isNotBlank() }
                 state.selected = Place(label ?: p.format(), p)
-                controller.moveTo(p, 16)
+                controller.moveTo(p, 16, lift = 0.22)
             }
             q != null -> { state.query = q; state.searchOpen = true }
         }
@@ -305,9 +305,9 @@ private fun HomeContent(start: AppSettings) {
             }
             if (nav == null && !planning) {
                 when (state.tab) {
-                    TAB_SAVED -> TabPage { SavedScreen(onShow = { p -> state.tab = TAB_MAP; state.selected = p; controller.moveTo(p.point, 16) }, onShowTrack = { pts -> state.tab = TAB_MAP; controller.fit(pts) }) }
+                    TAB_SAVED -> TabPage { SavedScreen(onShow = { p -> state.tab = TAB_MAP; state.selected = p; controller.moveTo(p.point, 16, lift = 0.22) }, onShowTrack = { pts -> state.tab = TAB_MAP; controller.fit(pts) }) }
                     TAB_DOWNLOADS -> TabPage { DownloadsScreen() }
-                    TAB_MORE -> TabPage { MoreScreen(onGoTo = { p -> state.tab = TAB_MAP; state.selected = p; controller.moveTo(p.point, 16) }) }
+                    TAB_MORE -> TabPage { MoreScreen(onGoTo = { p -> state.tab = TAB_MAP; state.selected = p; controller.moveTo(p.point, 16, lift = 0.22) }) }
                 }
             }
             if (state.searchOpen) {
@@ -318,7 +318,7 @@ private fun HomeContent(start: AppSettings) {
                         state.searchOpen = false
                         state.tab = TAB_MAP
                         state.selected = place
-                        controller.moveTo(place.point, 16)
+                        controller.moveTo(place.point, 16, lift = 0.22)
                     },
                     onShowAll = {
                         state.searchOpen = false

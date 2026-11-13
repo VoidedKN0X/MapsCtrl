@@ -84,11 +84,13 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
         view.isClickable = true
         view.mapScaleBar.isVisible = false
         view.setBuiltInZoomControls(false)
+        view.model.displayModel.backgroundColor = 0xFFE2E2DD.toInt()
         view.model.mapViewPosition.setZoomLevelMin(2.toByte())
         view.model.mapViewPosition.setZoomLevelMax(20.toByte())
         view.model.mapViewPosition.mapPosition = MapPosition(LatLong(start.lat, start.lon), startZoom.toInt().toByte())
         tileCache = AndroidUtil.createTileCache(
-            context, "ctrl-tiles", view.model.displayModel.tileSize, 1f,
+            // Room for the square frame buffer a turned map needs (the screen's diagonal in both directions).
+            context, "ctrl-tiles", view.model.displayModel.tileSize, 2.5f,
             view.model.frameBufferModel.overdrawFactor,
         )
         view.model.mapViewPosition.addObserver(object : Observer {
@@ -136,6 +138,7 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
     fun setNight(isNight: Boolean) {
         if (isNight == night && renderer != null) return
         night = isNight
+        view.model.displayModel.backgroundColor = if (night) 0xFF0B0B0D.toInt() else 0xFFE2E2DD.toInt()
         tileCache.purge()
         renderer?.setXmlRenderTheme(theme())
         view.layerManager.redrawLayers()
@@ -154,6 +157,7 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
         for (f in mapFiles) runCatching { store.addMapDataStore(MapFile(f), false, false) }
         dataStore = store
         tileCache.purge()
+        // Labels are drawn into the tiles: Mapsforge 0.25's separate label layer turns some street names upside down.
         val r = TileRendererLayer(tileCache, store, view.model.mapViewPosition, false, true, false, graphics)
         r.setXmlRenderTheme(theme())
         renderer = r
@@ -218,8 +222,18 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
 
     // ---------- Camera ----------
 
-    fun moveTo(p: LatLon, zoom: Int? = null, animate: Boolean = true) {
+    /**
+     * Centres the map on [p]. With [lift] (a fraction of the view's height) the point sits that much above the
+     * middle, so a sheet at the bottom doesn't cover it.
+     */
+    fun moveTo(target: LatLon, zoom: Int? = null, animate: Boolean = true, lift: Double = 0.0) {
         val pos = view.model.mapViewPosition
+        val p = if (lift == 0.0) target else {
+            val z = zoom ?: pos.zoomLevel.toInt()
+            val mpp = Math.cos(Math.toRadians(target.lat)) * 2 * Math.PI * 6378137.0 / (view.model.displayModel.tileSize * Math.pow(2.0, z.toDouble()))
+            val h = view.height.takeIf { it > 0 } ?: context.resources.displayMetrics.heightPixels
+            LatLon(target.lat - lift * h * mpp / 111_320.0, target.lon)
+        }
         if (zoom != null && zoom.toByte() != pos.zoomLevel) {
             pos.mapPosition = MapPosition(LatLong(p.lat, p.lon), zoom.toByte())
         } else if (animate) {

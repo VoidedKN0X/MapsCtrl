@@ -295,7 +295,9 @@ fun MapsCtrlTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable ()
             colorScheme = if (dark) DarkScheme else LightScheme,
             typography = AppTypography,
             shapes = AppShapes,
-            content = content,
-        )
+        ) {
+            // Text without its own colour uses the Ctrl text colour, on every surface.
+            CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides palette.Text, content = content)
+        }
     }
 }

@@ -1,6 +1,9 @@
 package com.vknxworks.mapsctrl.search
 
-import android.database.sqlite.SQLiteDatabase
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.SQLiteStatement
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.driver.bundled.SQLITE_OPEN_READONLY
 import com.vknxworks.mapsctrl.geo.LatLon
 import java.io.Closeable
 import java.io.File
@@ -17,31 +20,43 @@ data class PoiCategory(val id: Int, val names: Map<String, String>, val parent: 
 /**
  * Reads a Mapsforge POI file (version 5): an SQLite database with the tags of each POI as "key=value" lines,
  * an R-tree of positions, a category tree, and (in newer files) a trigram full-text index over the tags.
- * Opened read-only; nothing is ever written to it.
+ * Android's own SQLite has neither R-tree nor FTS5, so this uses AndroidX's bundled SQLite.
+ * Opened read-only; nothing is ever written to it. One connection, used by one thread at a time.
  */
 class PoiDatabase(val file: File) : Closeable {
-    private val db: SQLiteDatabase = SQLiteDatabase.openDatabase(
-        file.path,
-        null,
-        SQLiteDatabase.OPEN_READONLY or SQLiteDatabase.NO_LOCALIZED_COLLATORS,
-    )
+    private val db: SQLiteConnection = BundledSQLiteDriver().open(file.path, SQLITE_OPEN_READONLY)
 
-    val categories: Map<Int, PoiCategory> = runCatching {
-        db.rawQuery("SELECT id, name, parent FROM poi_categories", null).use { c ->
-            buildMap {
-                while (c.moveToNext()) {
-                    val names = c.getString(1).orEmpty().split('\r', '\n').mapNotNull { kv ->
-                        val i = kv.indexOf('='); if (i <= 0) null else kv.substring(0, i) to kv.substring(i + 1)
-                    }.toMap().ifEmpty { mapOf("en" to c.getString(1).orEmpty()) }
-                    put(c.getInt(0), PoiCategory(c.getInt(0), names, if (c.isNull(2)) null else c.getInt(2)))
+    private fun <T> rows(sql: String, args: List<Any>, read: (SQLiteStatement) -> T): List<T> = synchronized(this) {
+        db.prepare(sql).use { st ->
+            args.forEachIndexed { i, a ->
+                when (a) {
+                    is Double -> st.bindDouble(i + 1, a)
+                    is Long -> st.bindLong(i + 1, a)
+                    is Int -> st.bindLong(i + 1, a.toLong())
+                    else -> st.bindText(i + 1, a.toString())
                 }
             }
+            val out = ArrayList<T>()
+            while (st.step()) out += read(st)
+            out
         }
+    }
+
+    val categories: Map<Int, PoiCategory> = runCatching {
+        rows("SELECT id, name, parent FROM poi_categories", emptyList()) { st ->
+            val raw = st.getText(1)
+            val names = raw.split('\r', '\n').mapNotNull { kv ->
+                val i = kv.indexOf('='); if (i <= 0) null else kv.substring(0, i) to kv.substring(i + 1)
+            }.toMap().ifEmpty { mapOf("en" to raw) }
+            val id = st.getLong(0).toInt()
+            PoiCategory(id, names, if (st.isNull(2)) null else st.getLong(2).toInt())
+        }.associateBy { it.id }
     }.getOrDefault(emptyMap())
 
-    /** Whether the file has the trigram index (and the phone's SQLite can use it). */
+    /** Whether the file has the trigram index. */
     private val hasFts: Boolean = runCatching {
-        db.rawQuery("SELECT rowid FROM poi_data_fts WHERE data LIKE ? LIMIT 1", arrayOf("%abc%")).use { true }
+        rows("SELECT rowid FROM poi_data_fts WHERE data LIKE ? LIMIT 1", listOf("%abc%")) { 0 }
+        true
     }.getOrDefault(false)
 
     /** POIs whose tags contain every word of [words] (each at least 3 letters for the fast index). */
@@ -51,7 +66,7 @@ class PoiDatabase(val file: File) : Closeable {
         val where = usable.joinToString(" AND ") { "f.data LIKE ?" }
         val sql = "SELECT d.id, d.data, i.minLat, i.minLon FROM $from JOIN poi_data d ON d.id = $idCol " +
             "JOIN poi_index i ON i.id = d.id WHERE $where LIMIT $limit"
-        return query(sql, usable.map { "%${it.replace("%", "").replace("_", "")}%" }.toTypedArray())
+        return query(sql, usable.map { "%${it.replace("%", "").replace("_", "")}%" })
     }
 
     /** POIs in any of [categoryIds] inside the box. */
@@ -61,21 +76,21 @@ class PoiDatabase(val file: File) : Closeable {
         val sql = "SELECT DISTINCT d.id, d.data, i.minLat, i.minLon FROM poi_index i JOIN poi_category_map m ON m.id = i.id " +
             "JOIN poi_data d ON d.id = i.id WHERE i.minLat <= ? AND i.maxLat >= ? AND i.minLon <= ? AND i.maxLon >= ? " +
             "AND m.category IN ($ids) LIMIT $limit"
-        return query(sql, arrayOf(north.toString(), south.toString(), east.toString(), west.toString()))
+        return query(sql, listOf(north, south, east, west))
     }
 
     /** Any POIs inside the box (for taps on the map). */
     fun inBox(south: Double, west: Double, north: Double, east: Double, limit: Int = 50): List<PoiHit> {
         val sql = "SELECT d.id, d.data, i.minLat, i.minLon FROM poi_index i JOIN poi_data d ON d.id = i.id " +
             "WHERE i.minLat <= ? AND i.maxLat >= ? AND i.minLon <= ? AND i.maxLon >= ? LIMIT $limit"
-        return query(sql, arrayOf(north.toString(), south.toString(), east.toString(), west.toString()))
+        return query(sql, listOf(north, south, east, west))
     }
 
     /** POIs inside the box whose tags contain [tag] ("highway=speed_camera"). */
     fun withTag(tag: String, south: Double, west: Double, north: Double, east: Double, limit: Int = 500): List<PoiHit> {
         val sql = "SELECT d.id, d.data, i.minLat, i.minLon FROM poi_index i JOIN poi_data d ON d.id = i.id " +
             "WHERE i.minLat <= ? AND i.maxLat >= ? AND i.minLon <= ? AND i.maxLon >= ? AND d.data LIKE ? LIMIT $limit"
-        return query(sql, arrayOf(north.toString(), south.toString(), east.toString(), west.toString(), "%$tag%"))
+        return query(sql, listOf(north, south, east, west, "%$tag%"))
             .filter { hit -> tag.substringBefore('=').let { k -> hit.tags[k] == tag.substringAfter('=') } }
     }
 
@@ -90,32 +105,26 @@ class PoiDatabase(val file: File) : Closeable {
         return out
     }
 
-    private fun query(sql: String, args: Array<String>): List<PoiHit> = runCatching {
-        db.rawQuery(sql, args).use { c ->
-            val list = ArrayList<PoiHit>(c.count)
-            val ids = ArrayList<Long>()
-            while (c.moveToNext()) {
-                val id = c.getLong(0)
-                ids += id
-                list += PoiHit(id, LatLon(c.getDouble(2), c.getDouble(3)), parseTags(c.getString(1)), emptyList(), file.name)
-            }
-            val cats = categoriesOf(ids)
-            list.map { it.copy(categories = cats[it.id].orEmpty()) }
+    private fun query(sql: String, args: List<Any>): List<PoiHit> = runCatching {
+        val list = rows(sql, args) { st ->
+            PoiHit(st.getLong(0), LatLon(st.getDouble(2), st.getDouble(3)), parseTags(st.getText(1)), emptyList(), file.name)
         }
-    }.getOrDefault(emptyList())
+        val cats = categoriesOf(list.map { it.id })
+        list.map { it.copy(categories = cats[it.id].orEmpty()) }
+    }.onFailure { android.util.Log.w("PoiDatabase", "query failed: $sql", it) }.getOrDefault(emptyList())
 
     private fun categoriesOf(ids: List<Long>): Map<Long, List<Int>> {
         if (ids.isEmpty()) return emptyMap()
         val out = HashMap<Long, MutableList<Int>>()
         ids.chunked(500).forEach { chunk ->
-            db.rawQuery("SELECT id, category FROM poi_category_map WHERE id IN (${chunk.joinToString(",")})", null).use { c ->
-                while (c.moveToNext()) out.getOrPut(c.getLong(0)) { mutableListOf() } += c.getInt(1)
-            }
+            rows("SELECT id, category FROM poi_category_map WHERE id IN (${chunk.joinToString(",")})", emptyList()) { st ->
+                st.getLong(0) to st.getLong(1).toInt()
+            }.forEach { (id, cat) -> out.getOrPut(id) { mutableListOf() } += cat }
         }
         return out
     }
 
-    override fun close() = db.close()
+    override fun close() = synchronized(this) { db.close() }
 
     companion object {
         fun parseTags(data: String?): Map<String, String> {

@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -95,6 +98,8 @@ fun RoutePanel(
     var choosingStart by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
+        // Keeps the status bar readable over a light map.
+        Box(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(CtrlColors.Background.copy(alpha = 0.85f)))
         // ---- Top: from / to / mode ----
         CtrlCard(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = Gutter, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -106,7 +111,7 @@ fun RoutePanel(
                         is RouteStart.At -> s.place.name
                     }
                     EndRow(stringResource(R.string.route_from), if (pickingStart) stringResource(R.string.route_tap_map) else startText, Icons.Filled.MyLocation) { choosingStart = true }
-                    EndRow(stringResource(R.string.route_to), plan.destination?.name.orEmpty(), Icons.Outlined.Place, divider = true, onClick = null)
+                    EndRow(stringResource(R.string.route_to_label), plan.destination?.name.orEmpty(), Icons.Outlined.Place, divider = true, onClick = null)
                 }
                 if (plan.start is RouteStart.At) {
                     Spacer(Modifier.width(8.dp))

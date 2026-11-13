@@ -109,6 +109,17 @@ class MapRepository(private val context: Context, private val scope: CoroutineSc
         }
     }
 
+    /**
+     * Map files left behind by MapsCtrl 0.2.0 (.mwm, a format this version can't read), in the app's own storage.
+     * Bookmark files are never touched.
+     */
+    suspend fun legacyMaps(): List<File> = withContext(Dispatchers.IO) {
+        listOfNotNull(context.filesDir, context.getExternalFilesDir(null))
+            .flatMap { root -> root.walkTopDown().maxDepth(4).filter { it.isFile && it.name.endsWith(".mwm") }.toList() }
+    }
+
+    suspend fun deleteLegacyMaps() = withContext(Dispatchers.IO) { legacyMaps().forEach { it.delete() } }
+
     /** The regions and folders in [folder] ("" for the top, "europe/", "europe/germany/"). */
     suspend fun browse(folder: String): List<CatalogItem> = withContext(Dispatchers.IO) {
         coroutineScope {

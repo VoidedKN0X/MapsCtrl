@@ -52,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -126,9 +127,36 @@ private fun InstalledScreen(onAdd: () -> Unit) {
         val mapBytes = installed.sumOf { it.mapBytes + it.poiBytes }
         val free = remember(installed, segments) { context.filesDir.usableSpace }
         StatRow(
-            { m -> StatTile(stringResource(R.string.stat_maps), fmt.bytes(mapBytes), m, sub = stringResource(R.string.stat_maps_count, installed.size)) },
+            { m -> StatTile(stringResource(R.string.stat_maps), fmt.bytes(mapBytes), m, sub = pluralStringResource(R.plurals.stat_maps_count, installed.size, installed.size)) },
             { m -> StatTile(stringResource(R.string.stat_routing), fmt.bytes(segments.sumOf { it.bytes }), m, sub = stringResource(R.string.stat_free, fmt.bytes(free))) },
         )
+
+        // Maps from MapsCtrl 0.2.0, which this version can't read.
+        var legacy by remember { mutableStateOf<List<java.io.File>>(emptyList()) }
+        var confirmLegacy by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { legacy = c.maps.legacyMaps() }
+        if (legacy.isNotEmpty()) {
+            Group(stringResource(R.string.legacy_label), footer = stringResource(R.string.legacy_footer)) {
+                GroupRow(
+                    stringResource(R.string.legacy_title),
+                    stringResource(R.string.legacy_subtitle, legacy.size, fmt.bytes(legacy.sumOf { it.length() })),
+                    icon = Icons.Outlined.Delete,
+                    onClick = { confirmLegacy = true },
+                )
+            }
+        }
+        if (confirmLegacy) {
+            ConfirmDialog(
+                title = stringResource(R.string.legacy_title),
+                body = stringResource(R.string.legacy_confirm),
+                confirm = stringResource(R.string.delete),
+                onDismiss = { confirmLegacy = false },
+                onConfirm = {
+                    confirmLegacy = false
+                    scope.launch { c.maps.deleteLegacyMaps(); legacy = c.maps.legacyMaps() }
+                },
+            )
+        }
 
         // Downloads still running for maps not yet installed.
         val pending = downloads.filterKeys { k -> installed.none { it.path == k } }
@@ -334,7 +362,7 @@ private fun BrowseScreen(path: String, onOpen: (String) -> Unit, onBack: () -> U
         com.vknxworks.mapsctrl.ui.components.CtrlAlertDialog(
             onDismissRequest = { confirm = null },
             title = { Text(stringResource(R.string.download_confirm_title, item.name), style = MaterialTheme.typography.titleLarge) },
-            text = { Text(stringResource(R.string.download_confirm_body, "~" + fmt.bytes(total)), style = MaterialTheme.typography.bodyMedium) },
+            text = { Text(stringResource(R.string.download_confirm_body, fmt.bytes(total)), style = MaterialTheme.typography.bodyMedium) },
             confirmButton = { TextButton(onClick = { c.maps.download(item, settings.withSearchData); confirm = null }) { Text(stringResource(R.string.download)) } },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text(stringResource(R.string.cancel), color = CtrlColors.Text) } },
         )
