@@ -25,11 +25,19 @@ object Coordinates {
 
         // Two parts with hemisphere letters, each in decimal degrees, DM or DMS.
         val upper = s.uppercase()
-        val part = """([NSEWO])?\s*(\d{1,3}(?:[.,]\d+)?)\s*°?\s*(?:(\d{1,2}(?:[.,]\d+)?)\s*'?\s*)?(?:(\d{1,2}(?:[.,]\d+)?)\s*"?\s*)?([NSEWO])?"""
-        val m = Regex("""^\s*$part\s*[,;/]?\s*$part\s*$""").find(upper) ?: return null
-        val g = m.groupValues
-        val first = component(g[1], g[2], g[3], g[4], g[5]) ?: return null
-        val second = component(g[6], g[7], g[8], g[9], g[10]) ?: return null
+        // A number in degrees, with minutes (') and seconds (") when marked.
+        val num = """(\d{1,3}(?:[.,]\d+)?)\s*°?\s*(?:(\d{1,2}(?:[.,]\d+)?)\s*'\s*)?(?:(\d{1,2}(?:[.,]\d+)?)\s*"\s*)?"""
+        val sep = """\s*[,;/]?\s*"""
+        val pre = Regex("""^\s*([NSEWO])\s*$num$sep([NSEWO])\s*$num\s*$""").find(upper)
+        val post = Regex("""^\s*$num\s*([NSEWO])$sep$num\s*([NSEWO])\s*$""").find(upper)
+        val bare = Regex("""^\s*$num$sep$num\s*$""").find(upper)
+        val (first, second) = when {
+            pre != null -> pre.groupValues.let { g -> component(g[1], g[2], g[3], g[4], "") to component(g[5], g[6], g[7], g[8], "") }
+            post != null -> post.groupValues.let { g -> component("", g[1], g[2], g[3], g[4]) to component("", g[5], g[6], g[7], g[8]) }
+            bare != null -> bare.groupValues.let { g -> component("", g[1], g[2], g[3], "") to component("", g[4], g[5], g[6], "") }
+            else -> return null
+        }
+        if (first == null || second == null) return null
         // The hemisphere letters decide which is latitude; without letters the first part is latitude.
         val (lat, lon) = when {
             first.second in "EWO" || second.second in "NS" -> second.first to first.first

@@ -97,7 +97,7 @@ class MapRepository(private val context: Context, private val scope: CoroutineSc
     fun mapFiles(): List<File> = _installed.value.map { mapFile(it.path) }.filter { it.exists() }
     fun poiFiles(): List<File> = _installed.value.map { poiFile(it.path) }.filter { it.exists() }
 
-    fun storageBytes(): Long = (mapsDir.listFiles().orEmpty() + poiDir.listFiles().orEmpty()).sumOf { it.length() }
+    fun storageBytes(): Long = (mapsDir.listFiles().orEmpty().toList() + poiDir.listFiles().orEmpty().toList()).sumOf { f: File -> f.length() }
 
     private suspend fun save(transform: (List<InstalledMap>) -> List<InstalledMap>) = lock.withLock {
         val next = transform(_installed.value).sortedBy { it.name.lowercase() }

@@ -1,4 +1,309 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Tabs -->
     <string name="tab_map">Map</string>
+    <string name="tab_saved">Saved</string>
+    <string name="tab_downloads">Downloads</string>
+    <string name="tab_more">More</string>
+
+    <!-- You page and settings shell -->
+    <string name="settings_subtitle">Map, units, navigation, voice and ETA sharing</string>
+    <string name="you_offline">Offline · search and routing stay on this phone</string>
+    <string name="you_maps_on_phone">%1$d maps · %2$s</string>
+
+    <!-- Map screen -->
+    <string name="search_hint">Search places, addresses, coordinates</string>
+    <string name="zoom_in">Zoom in</string>
+    <string name="zoom_out">Zoom out</string>
+    <string name="north_up">Turn north up</string>
+    <string name="location_show">Show my position</string>
+    <string name="location_compass">Turn the map with the compass</string>
+    <string name="location_stop">Stop following my position</string>
+    <string name="location_waiting">Waiting for your position…</string>
+    <string name="location_allow">Allow location</string>
+    <string name="osm_credit">© OpenStreetMap contributors</string>
+    <string name="no_maps_label">Offline maps</string>
+    <string name="no_maps_title">No maps yet</string>
+    <string name="no_maps_body">Download a country or region to see it here, search it and find routes, all without a connection.</string>
+    <string name="no_maps_action">Download maps</string>
+    <string name="dropped_pin">Dropped pin</string>
+    <string name="point_on_map">Point on the map</string>
+
+    <!-- Place sheet -->
+    <string name="place">Place</string>
+    <string name="saved_place">Saved place</string>
+    <string name="route_to">Route to</string>
+    <string name="saved">Saved</string>
+    <string name="share">Share</string>
+    <string name="place_saved">Saved</string>
+    <string name="place_removed">Removed from Saved</string>
+    <string name="copied">Copied</string>
+    <string name="more_details">%1$d more details</string>
+    <string name="detail_wheelchair">Wheelchair access: %1$s</string>
+
+    <!-- Search -->
+    <string name="search_no_data_title">No search data yet</string>
+    <string name="search_no_data_body">Search works offline with the search data that comes with each map. Download a map in Downloads, with "Search data" on. Coordinates work without it.</string>
+    <string name="search_nothing_title">Nothing found</string>
+    <string name="search_nothing_body">Try another spelling, a street name, a category such as "pharmacy", or coordinates.</string>
+    <string name="search_show_on_map">Show all %1$d on the map</string>
+    <string name="cat_food">Food</string>
+    <string name="cat_fuel">Fuel</string>
+    <string name="cat_charging">Charging</string>
+    <string name="cat_parking">Parking</string>
+    <string name="cat_supermarket">Groceries</string>
+    <string name="cat_hotel">Hotels</string>
+    <string name="cat_pharmacy">Pharmacy</string>
+    <string name="cat_atm">Cash</string>
+    <string name="cat_toilets">Toilets</string>
+    <string name="cat_transport">Transport</string>
+
+    <!-- Route planning -->
+    <string name="route_from">From</string>
+    <string name="route_my_location">My location</string>
+    <string name="route_tap_map">Tap the map…</string>
+    <string name="route_swap">Swap start and destination</string>
+    <string name="mode_car">Car</string>
+    <string name="mode_bike">Bike</string>
+    <string name="mode_foot">Foot</string>
+    <string name="route_computing">Finding a route…</string>
+    <string name="route_no_location_title">Where do you start?</string>
+    <string name="route_no_location_body">Allow location to start from where you are, or choose a start point.</string>
+    <string name="route_no_location_wait">Waiting for your position. You can also choose a start point.</string>
+    <string name="route_choose_start">Choose start</string>
+    <string name="route_pick_on_map">Pick a point on the map</string>
+    <string name="route_start_search_hint">Search a place or type coordinates</string>
+    <string name="route_data_label">Routing data</string>
+    <string name="route_data_title">Download routing data first</string>
+    <string name="route_data_body">This route needs %1$d routing tile(s) from brouter.de, %2$s in all. They cover large areas, so one download serves many routes.</string>
+    <string name="route_data_body_checking">This route needs %1$d routing tile(s) from brouter.de. Checking the size…</string>
+    <string name="route_data_body_unknown">This route needs %1$d routing tile(s) from brouter.de. The size couldn\'t be checked; they are usually 50 to 300 MB each.</string>
+    <string name="route_data_missing_on_server">brouter.de has no routing data for part of this route.</string>
+    <string name="route_data_download">Download</string>
+    <string name="route_data_download_size">Download %1$s</string>
+    <string name="route_data_downloading">Downloading routing data…</string>
+    <string name="route_failed_title">No route found</string>
+    <string name="route_failed_body">There may be no road or path between these points, or the routing data doesn\'t cover them.</string>
+    <string name="route_arrive_at">Arrive at %1$s</string>
+    <string name="route_start_elsewhere">Navigation follows your position; the route was planned from the start point you chose.</string>
+    <string name="try_again">Try again</string>
+
+    <!-- Navigation -->
+    <string name="nav_start">Start</string>
+    <string name="nav_demo">Demo</string>
+    <string name="nav_next">Next</string>
+    <string name="nav_then">Then</string>
+    <string name="nav_waiting">Waiting for position</string>
+    <string name="nav_off_route">Off route</string>
+    <string name="nav_rerouting">Rerouting</string>
+    <string name="nav_recenter">Back to my position</string>
+    <string name="nav_arrival">Arrival</string>
+    <string name="nav_time_left">Time</string>
+    <string name="nav_distance_left">Distance</string>
+    <string name="nav_end">End</string>
+    <string name="nav_mute">Mute voice</string>
+    <string name="nav_unmute">Unmute voice</string>
+    <string name="nav_camera">Speed camera in %1$s</string>
+    <string name="nav_arrived_label">You have arrived</string>
+    <string name="notif_channel">Navigation and track recording</string>
+    <string name="notif_navigating">Navigating</string>
+    <string name="notif_recording">Recording a track</string>
+
+    <!-- Turn instructions (lower case: they're used in the middle of a sentence too) -->
+    <string name="turn_straight">continue straight</string>
+    <string name="turn_left">turn left</string>
+    <string name="turn_slight_left">bear left</string>
+    <string name="turn_sharp_left">turn sharp left</string>
+    <string name="turn_right">turn right</string>
+    <string name="turn_slight_right">bear right</string>
+    <string name="turn_sharp_right">turn sharp right</string>
+    <string name="turn_keep_left">keep left</string>
+    <string name="turn_keep_right">keep right</string>
+    <string name="turn_u_turn">make a U-turn</string>
+    <string name="turn_off_route">return to the route</string>
+    <string name="turn_roundabout">enter the roundabout</string>
+    <string name="turn_roundabout_n">take exit %1$d at the roundabout</string>
+    <string-array name="turn_roundabout_exit">
+        <item>take the first exit at the roundabout</item>
+        <item>take the second exit at the roundabout</item>
+        <item>take the third exit at the roundabout</item>
+        <item>take the fourth exit at the roundabout</item>
+        <item>take the fifth exit at the roundabout</item>
+        <item>take the sixth exit at the roundabout</item>
+    </string-array>
+    <string name="turn_beeline">head straight to the destination</string>
+    <string name="turn_exit_left">take the exit on the left</string>
+    <string name="turn_exit_right">take the exit on the right</string>
+    <string name="turn_arrive">you have arrived</string>
+    <string name="voice_in_distance">In %1$s, %2$s</string>
+    <string name="voice_then">then %1$s</string>
+    <string name="voice_rerouting">Finding a new route</string>
+    <string name="voice_speed_camera">Speed camera ahead</string>
+    <string name="voice_test_sentence">In 300 metres, turn right. Then keep left.</string>
+
+    <!-- Units and durations -->
+    <string name="unit_m">%1$d m</string>
+    <string name="unit_km">%1$s km</string>
+    <string name="unit_ft">%1$d ft</string>
+    <string name="unit_mi">%1$s mi</string>
+    <string name="unit_kmh">km/h</string>
+    <string name="unit_mph">mph</string>
+    <string name="duration_less_than_min">&lt; 1 min</string>
+    <string name="duration_min">%1$d min</string>
+    <string name="duration_h_min">%1$d h %2$s min</string>
+
+    <!-- Downloads -->
+    <string name="stat_maps">Maps</string>
+    <string name="stat_maps_count">%1$d on this phone</string>
+    <string name="stat_routing">Routing data</string>
+    <string name="stat_free">%1$s free</string>
+    <string name="group_your_maps">Your maps</string>
+    <string name="your_maps_empty">No maps yet. Add a country or region from the download server, or import a Mapsforge .map file you already have.</string>
+    <string name="map_size">Map %1$s</string>
+    <string name="search_size">search %1$s</string>
+    <string name="imported">imported</string>
+    <string name="update">Update</string>
+    <string name="add_maps">Add maps</string>
+    <string name="import_map">Import .map</string>
+    <string name="import_started">Importing…</string>
+    <string name="import_done">Added %1$s</string>
+    <string name="import_not_map">That file isn\'t a Mapsforge map (.map).</string>
+    <string name="updates_check">Check for updates</string>
+    <string name="updates_checking">Checking…</string>
+    <string name="updates_none">Your maps are up to date</string>
+    <string name="group_download_options">Download options</string>
+    <string name="with_search_data">Search data</string>
+    <string name="with_search_data_subtitle">Download the places and addresses for offline search with each map (about half the map\'s size)</string>
+    <string name="group_routing_data">Routing data</string>
+    <string name="routing_data_empty">None yet</string>
+    <string name="routing_data_footer">Routing data comes in tiles of 5 by 5 degrees from brouter.de. MapsCtrl asks before downloading the tiles a route needs.</string>
+    <string name="downloads_sources">Maps and search data: download.mapsforge.org. Routing data: brouter.de. Both are made from OpenStreetMap. MapsCtrl only connects when you start a download.</string>
+    <string name="downloading_map">Map</string>
+    <string name="downloading_search">Search data</string>
+    <string name="download_failed">Download failed: %1$s</string>
+    <string name="download">Download</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="download_confirm_title">Download %1$s?</string>
+    <string name="download_confirm_body">About %1$s from download.mapsforge.org. Use Wi-Fi for big maps.</string>
+    <string name="browse_source">download.mapsforge.org</string>
+    <string name="browse_error_title">Couldn\'t load the list</string>
+    <string name="browse_error_body">Check your connection and try again.</string>
+    <string name="delete_map_title">Delete %1$s?</string>
+    <string name="delete_map_body">The map and its search data are removed from this phone. You can download them again any time.</string>
+    <string name="delete_routing_title">Delete routing tile %1$s?</string>
+    <string name="delete_routing_body">Routes in this area need it again later; MapsCtrl will ask before downloading it.</string>
+
+    <!-- Saved -->
+    <string name="group_recording">Track recording</string>
+    <string name="recording_start">Record a track</string>
+    <string name="recording_subtitle">Keeps recording with the screen off; save it when you stop</string>
+    <string name="recording_now">Recording</string>
+    <string name="recording_stats">%1$d points · %2$s</string>
+    <string name="recording_stop">Stop and save</string>
+    <string name="recording_needs_location">Recording needs the location permission.</string>
+    <string name="group_places">Places</string>
+    <string name="places_empty">Save a place from its sheet on the map, or import a GPX file.</string>
+    <string name="group_tracks">Tracks</string>
+    <string name="tracks_empty">Record a track or import one from a GPX file.</string>
+    <string name="track_subtitle">%1$s · %2$s</string>
+    <string name="track_hide">Hide on the map</string>
+    <string name="track_show">Show on the map</string>
+    <string name="track_default_name">Track %1$s</string>
+    <string name="rename">Rename</string>
+    <string name="gpx_import">Import GPX</string>
+    <string name="gpx_export">Export GPX</string>
+    <string name="gpx_export_one">Export as GPX</string>
+    <string name="gpx_imported">Imported %1$d places and %2$d tracks</string>
+    <string name="gpx_import_failed">That file couldn\'t be read as GPX.</string>
+    <string name="gpx_exported">Exported</string>
+    <string name="gpx_export_failed">Couldn\'t write the file.</string>
+    <string name="delete_place_title">Delete %1$s?</string>
+    <string name="delete_saved_body">It\'s removed from Saved on this phone.</string>
+
+    <!-- More -->
+    <string name="group_tools">Tools</string>
+    <string name="goto_coords">Go to coordinates</string>
+    <string name="goto_coords_subtitle">Decimal degrees, degrees-minutes-seconds or a geo: link</string>
+    <string name="goto_coords_example" translatable="false">50.8466, 4.3528</string>
+    <string name="goto_coords_help">For example 50.8466, 4.3528 or 50°50\'48\"N 4°21\'10\"E</string>
+    <string name="goto_coords_invalid">These aren\'t coordinates MapsCtrl understands.</string>
+    <string name="goto_go">Go</string>
+    <string name="voice_test">Test the voice</string>
+    <string name="voice_test_subtitle">Speaks a direction with your phone\'s text-to-speech</string>
+
+    <!-- Settings -->
+    <string name="group_map">Map</string>
+    <string name="map_style">Map colours</string>
+    <string name="map_style_system">Follow the phone (day or night)</string>
+    <string name="map_style_day">Always day</string>
+    <string name="map_style_night">Always night</string>
+    <string name="units">Units</string>
+    <string name="units_metric">Kilometres</string>
+    <string name="units_imperial">Miles</string>
+    <string name="group_navigation">Navigation</string>
+    <string name="default_mode">Travel mode</string>
+    <string name="voice">Spoken directions</string>
+    <string name="voice_subtitle">Uses the phone\'s own text-to-speech; offline voices work without a connection</string>
+    <string name="voice_settings">Voice and language</string>
+    <string name="voice_settings_subtitle">Android\'s text-to-speech settings</string>
+    <string name="speed_limit">Speed limit</string>
+    <string name="speed_limit_subtitle">Shows the limit of the road you\'re on, from OpenStreetMap</string>
+    <string name="speed_cameras">Speed camera warnings</string>
+    <string name="speed_cameras_subtitle">Warns before fixed speed cameras on your route that are in OpenStreetMap. Check that this is allowed where you drive.</string>
+    <string name="keep_screen_on">Keep the screen on</string>
+    <string name="keep_screen_on_subtitle">While navigating</string>
+    <string name="group_privacy">Privacy</string>
+    <string name="location_permission">Location permission</string>
+    <string name="location_permission_on">Allowed. Your position stays on this phone.</string>
+    <string name="location_permission_off">Not allowed. Change it in Android\'s app settings.</string>
+    <string name="hide_screenshots">Hide in screenshots</string>
+    <string name="hide_screenshots_subtitle">Screenshots and screen recordings show a blank screen</string>
+
+    <!-- ETA sharing (ntfy) -->
+    <string name="ntfy_title_setting">Share ETA with ntfy</string>
+    <string name="ntfy_footer">While you navigate, MapsCtrl sends your arrival time and the distance left (never your position) to this ntfy topic: at the start, every 5 minutes and when you arrive. Anyone who knows the topic can read it, so use a hard-to-guess topic or your own server.</string>
+    <string name="ntfy_enable">Share my ETA</string>
+    <string name="ntfy_enable_subtitle">Off by default</string>
+    <string name="ntfy_needs_setup">Enter an https:// server and a topic first</string>
+    <string name="ntfy_server">Server</string>
+    <string name="ntfy_server_hint">https://ntfy.example.org</string>
+    <string name="ntfy_topic">Topic</string>
+    <string name="ntfy_test">Send a test message</string>
+    <string name="ntfy_test_subtitle">Checks the server and topic</string>
+    <string name="ntfy_test_message">Test message from MapsCtrl</string>
+    <string name="ntfy_test_ok">Sent</string>
+    <string name="ntfy_test_failed">Couldn\'t send. Check the server and topic.</string>
+    <string name="ntfy_on">On</string>
+    <string name="ntfy_off">Off · set it up in Settings</string>
+    <string name="ntfy_title">On the way to %1$s</string>
+    <string name="ntfy_eta">Arriving around %1$s, %2$s to go</string>
+    <string name="ntfy_arrived">Arrived at %1$s</string>
+
+    <!-- Licences and credits -->
+    <string name="licences_title">Credits and licences</string>
+    <string name="licences_subtitle">Map data, libraries and fonts</string>
+    <string name="group_map_data">Map data</string>
+    <string name="osm_licence">Open Database License</string>
+    <string name="osm_footer">Maps, search data and routing data are made from OpenStreetMap, available under the Open Database License.</string>
+    <string name="group_libraries">Libraries</string>
+    <string name="lib_mapsforge">Offline vector map rendering</string>
+    <string name="lib_brouter">Offline routing</string>
+    <string name="lib_androidsvg">Map symbols</string>
+    <string name="lib_androidx">The app\'s interface</string>
+    <string name="lib_kotlin">Language and libraries</string>
+    <string name="group_fonts">Fonts</string>
+    <string name="font_bundled">Bundled in the app</string>
+    <string name="name_mapsforge" translatable="false">Mapsforge</string>
+    <string name="name_brouter" translatable="false">BRouter</string>
+    <string name="name_androidsvg" translatable="false">AndroidSVG</string>
+    <string name="name_androidx" translatable="false">AndroidX, Jetpack Compose, Material 3</string>
+    <string name="name_kotlin" translatable="false">Kotlin, kotlinx.coroutines, kotlinx.serialization</string>
+    <string name="name_space_grotesk" translatable="false">Space Grotesk</string>
+    <string name="name_jetbrains_mono" translatable="false">JetBrains Mono</string>
+    <string name="lic_gpl3" translatable="false">GPL-3.0</string>
+    <string name="lic_lgpl3" translatable="false">LGPL-3.0</string>
+    <string name="lic_mit" translatable="false">MIT</string>
+    <string name="lic_apache2" translatable="false">Apache-2.0</string>
+    <string name="lic_ofl" translatable="false">OFL-1.1</string>
+    <string name="lic_odbl" translatable="false">ODbL</string>
 </resources>

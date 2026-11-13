@@ -47,7 +47,7 @@ class Router(private val profileDir: File, private val segmentDir: File) {
         // timode 1 = BRouter's own turn instructions; JSON output.
         collector.setParams(rc, waypoints, mutableMapOf("timode" to "1", "format" to "json"))
         // Keep every OSM tag BRouter knows (maxspeed, speed cameras) in the result, not just the ones the profile uses.
-        collector.setProfileParams(rc, mutableMapOf("processUnusedTags" to "true"))
+        collector.setProfileParams(rc, mutableMapOf("processUnusedTags" to "1"))
 
         val engine = RoutingEngine(null, null, segmentDir, waypoints, rc)
         engine.quite = true

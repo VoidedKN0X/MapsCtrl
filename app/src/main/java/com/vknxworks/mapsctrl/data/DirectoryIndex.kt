@@ -24,7 +24,7 @@ object DirectoryIndex {
         """<tr>.*?<a href="([^"]+)">[^<]*</a>\s*</td>\s*<td[^>]*>([^<]*)</td>\s*<td[^>]*>([^<]*)</td>""",
         RegexOption.IGNORE_CASE,
     )
-    private val nginxRow = Regex("""<a href="([^"]+)">[^<]*</a>\s+(\S+\s+\S+)\s+(\S+)""", RegexOption.IGNORE_CASE)
+    private val nginxRow = Regex("""<a href="([^"]+)">[^<]*</a>[ \t]+(\S+[ \t]+\S+)[ \t]+(\S+)""", RegexOption.IGNORE_CASE)
 
     fun parse(html: String): List<IndexEntry> {
         val rows = if (html.contains("<pre>", ignoreCase = true) && !html.contains("<table", ignoreCase = true)) {
