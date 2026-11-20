@@ -59,6 +59,7 @@ import com.vknxworks.mapsctrl.R
 import com.vknxworks.mapsctrl.container
 import com.vknxworks.mapsctrl.geo.Coordinates
 import com.vknxworks.mapsctrl.geo.LatLon
+import com.vknxworks.mapsctrl.location.HeadingGate
 import com.vknxworks.mapsctrl.map.CtrlRenderTheme
 import com.vknxworks.mapsctrl.map.MapController
 import com.vknxworks.mapsctrl.map.OpenedMaps
@@ -404,8 +405,16 @@ private fun com.vknxworks.mapsctrl.nav.PlanState.destinationSet() = destination 
 private fun PositionFeed(controller: MapController, state: HomeState, navigating: Boolean) {
     val c = LocalContext.current.container
     val fix by c.location.fix.collectAsStateWithLifecycle()
-    val compass = rememberCompass(state.follow == Follow.COMPASS || navigating)
-    val heading: Float? = fix?.let { f -> if ((f.speed ?: 0f) > 1.5f && f.bearing != null) f.bearing else compass }
+    val context = LocalContext.current
+    val hasCompass = remember {
+        (context.getSystemService(Context.SENSOR_SERVICE) as SensorManager).getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) != null
+    }
+    // The compass is for standing still and going slowly; while you ride faster the GPS says where you're heading
+    // and the sensor is switched off (see HeadingGate, which also keeps the map from turning north when you brake).
+    val wanted = state.follow == Follow.COMPASS || navigating
+    val gate = remember { HeadingGate() }
+    val compass = rememberCompass(gate.sensorNeeded(wanted, hasCompass, fix?.speed, fix?.bearing))
+    val heading: Float? = gate.heading(fix != null, wanted, hasCompass, fix?.speed, fix?.bearing, compass)
     LaunchedEffect(fix, heading) { controller.setFix(fix, heading) }
     // Follow your position; while navigating, heading up.
     LaunchedEffect(fix, state.follow, navigating, state.navPanned, heading) {
