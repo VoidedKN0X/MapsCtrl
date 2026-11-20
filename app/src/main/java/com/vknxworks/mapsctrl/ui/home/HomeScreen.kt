@@ -61,6 +61,7 @@ import com.vknxworks.mapsctrl.geo.Coordinates
 import com.vknxworks.mapsctrl.geo.LatLon
 import com.vknxworks.mapsctrl.map.CtrlRenderTheme
 import com.vknxworks.mapsctrl.map.MapController
+import com.vknxworks.mapsctrl.map.OpenedMaps
 import com.vknxworks.mapsctrl.nav.PlanStatus
 import com.vknxworks.mapsctrl.nav.RouteStart
 import com.vknxworks.mapsctrl.search.Place
@@ -113,7 +114,7 @@ fun HomeScreen() {
     // Wait for the saved settings once, so the map opens where you left it; and for the lists of downloaded maps
     // and elevation tiles and the map style files, so the map is set up once, with all of them, instead of being
     // rebuilt as each one arrives.
-    val initial by produceState<AppSettings?>(null) {
+    val initial by produceState<HomeStart?>(null) {
         c.maps.ready.first { it }
         c.terrain.ready.first { it }
         withContext(Dispatchers.IO) { runCatching { CtrlRenderTheme.prepare(context.applicationContext) } }
@@ -121,14 +122,22 @@ fun HomeScreen() {
         // The settings the screens observe catch up with the saved ones a moment later; wait for that too (briefly),
         // so the map isn't set up with the saved style and then reset to the defaults for one frame.
         withTimeoutOrNull(1_000) { c.settings.settings.first { it == loaded } }
-        value = loaded
+        // The downloaded maps are opened here, off the main thread, and handed to the map as it's built.
+        val installed = c.maps.installed.value
+        val maps = withContext(Dispatchers.IO) {
+            runCatching { OpenedMaps.open(installed.map { c.maps.mapFile(it.path) }.filter { it.exists() }) }.getOrNull()
+        }
+        value = HomeStart(loaded, maps)
     }
     val start = initial ?: return
-    HomeContent(start)
+    HomeContent(start.settings, start.maps)
 }
 
+/** What the map screen starts with: the saved settings, and the downloaded maps already opened (null: the map opens them itself). */
+private class HomeStart(val settings: AppSettings, val maps: OpenedMaps?)
+
 @Composable
-private fun HomeContent(start: AppSettings) {
+private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
     val context = LocalContext.current
     val c = context.container
     val scope = rememberCoroutineScope()
@@ -156,7 +165,8 @@ private fun HomeContent(start: AppSettings) {
         MapController(
             context, LatLon(start.lastLat, start.lastLon), start.lastZoom,
             initialNight = when (start.mapStyle) { MapStyle.SYSTEM -> dark; MapStyle.DAY -> false; MapStyle.NIGHT -> true },
-            initialMaps = c.maps.installed.value.map { c.maps.mapFile(it.path) }.filter { it.exists() },
+            initialMaps = openedMaps?.files ?: c.maps.installed.value.map { c.maps.mapFile(it.path) }.filter { it.exists() },
+            opened = openedMaps,
             initialDemDir = if (start.hillshading && dem.isNotEmpty()) c.terrain.dir else null,
             initialDemVersion = dem.keys.hashCode(),
         )

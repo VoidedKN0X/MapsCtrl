@@ -58,6 +58,27 @@ class CtrlMapView(context: Context, private val onUserPan: () -> Unit) : MapView
 }
 
 /**
+ * Downloaded .map files opened ahead of time (their headers read), so that at start it happens on a background
+ * thread and not while the map view is being built on the main thread. [files] is the list the map starts with.
+ */
+class OpenedMaps internal constructor(val files: List<File>, internal val stores: MutableMap<File, MapFile>) {
+    /** Closes what the map didn't take. */
+    internal fun closeRest() {
+        stores.values.forEach { runCatching { it.close() } }
+        stores.clear()
+    }
+
+    companion object {
+        /** Opens [files]; one that can't be opened is left for the map to try (and skip) as before. Blocking: call it off the main thread. */
+        fun open(files: List<File>): OpenedMaps {
+            val stores = HashMap<File, MapFile>()
+            for (f in files) runCatching { MapFile(f) }.getOrNull()?.let { stores[f] = it }
+            return OpenedMaps(files, stores)
+        }
+    }
+}
+
+/**
  * Everything on the map: the vector map from your downloaded .map files in the Ctrl style, the route, saved
  * places and tracks, the selected place and your position. One per screen.
  */
@@ -68,6 +89,8 @@ class MapController(
     /** What the map starts with, so the renderer is built once instead of again for each of these. */
     initialNight: Boolean = false,
     initialMaps: List<File> = emptyList(),
+    /** [initialMaps] already opened (see [OpenedMaps]); files not in it are opened here. */
+    opened: OpenedMaps? = null,
     initialDemDir: File? = null,
     initialDemVersion: Int = 0,
 ) {
@@ -84,6 +107,8 @@ class MapController(
     private var renderer: TileRendererLayer? = null
     private var dataStore: MultiMapDataStore? = null
     private var mapFiles: List<File> = emptyList()
+    /** Map files opened before this controller was built; used by the first renderer only. */
+    private var preOpened: OpenedMaps? = opened
     private var night = false
     private var hills: HillsRenderConfig? = null
     private var hillsKey: String? = null
@@ -181,7 +206,10 @@ class MapController(
         renderer?.let { layers.remove(it); it.onDestroy() }
         dataStore?.close()
         val store = MultiMapDataStore(MultiMapDataStore.DataPolicy.RETURN_ALL)
-        for (f in mapFiles) runCatching { store.addMapDataStore(MapFile(f), false, false) }
+        val pre = preOpened
+        preOpened = null
+        for (f in mapFiles) runCatching { store.addMapDataStore(pre?.stores?.remove(f) ?: MapFile(f), false, false) }
+        pre?.closeRest()
         dataStore = store
         tileCache.purge()
         // Labels are drawn into the tiles: Mapsforge 0.25's separate label layer turns some street names upside down.
