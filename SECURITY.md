@@ -21,6 +21,7 @@ MapsCtrl has no server and no account. It only goes online for downloads you sta
 
 - Any way for MapsCtrl to send data off the phone that isn't one of those, or to send more than it says (for example your position or searches)
 - Another app reading MapsCtrl's saved places, tracks, maps or settings
+- Saved places or tracks being readable from a copy of MapsCtrl's files without the phone's Keystore key (they're encrypted at rest; downloaded map data and settings are not), or a way to lose them through that encryption
 - A crafted map, search-data, routing-data or GPX file making MapsCtrl run code, read files it shouldn't, or crash in a way that loses your data
 - Downloads that could be redirected to or replaced by another server
 - Anything that lets someone run code or read files they shouldn't

@@ -4,6 +4,26 @@ What changed in each MapsCtrl release. Every release on the [Releases page](http
 
 To publish a new version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, add a section here, and push to `main`. Pushes without a version bump only build; they don't make a release.
 
+## Unreleased
+
+Built and checked by CI only: nothing here has been run on a phone yet.
+
+### Security
+
+- **Your saved places and tracks are now encrypted on the phone.** The file that holds them (`saved.json` in MapsCtrl's private storage: every saved place with its name, note and position, and every recorded or imported track with all its points and times) is now stored encrypted with AES-256-GCM. The key is 32 random bytes made on your phone, kept in the file `data.key` next to it, and itself encrypted by a key in the phone's secure hardware (the Android Keystore, in the StrongBox chip when the phone has one) that can't be copied off the phone. It needs no PIN or fingerprint. What this protects: a copy of MapsCtrl's files taken off the phone (from a backup image, a repair shop's dump, a rooted file manager) no longer shows where you saved places or where you recorded tracks. What it doesn't: someone who can use your unlocked phone, or software that runs inside MapsCtrl itself, sees them as before.
+- **Moving to the encrypted file can't lose anything.** The first start after the update reads your saved file as before, writes an encrypted copy next to it, reads that copy back from storage, decrypts it and compares it byte for byte with the original, and only then puts it in the original's place in one step. If anything goes wrong on the way (no space, the phone's secure hardware not answering, the app being closed), the original file stays exactly as it was, MapsCtrl keeps using it, and it tries again at the next start. On a phone where the secure hardware can't make a key at all, MapsCtrl keeps reading and writing the ordinary file as before.
+- **If the key is ever lost, nothing is deleted.** The key lives in the phone's secure hardware, so it doesn't survive copying MapsCtrl's files to another phone. If the encrypted file can't be opened, MapsCtrl shows "Can't open your saved places" instead of the map, with **Try again**. It doesn't write anything while that's showing, so nothing is overwritten. **Start empty** (only after you confirm) moves the unreadable file aside as `saved.json.unreadable` (and the key file as `data.key.unreadable`) instead of deleting it, and lets you go on with an empty list; your maps and settings aren't affected.
+- **GPX files stay normal GPX.** Export still writes an ordinary GPX file to the place you pick, and import still reads ordinary GPX. A track that's being recorded is kept in memory as before and is encrypted when you stop the recording and it's saved.
+- **An older MapsCtrl can't read the encrypted file.** Don't install an older version over this one: it would show no saved places or tracks (the encrypted file stays on the phone and opens again in this version or a newer one, as long as the older version didn't save anything in the meantime: saving a place or a track there would write a new file over the encrypted one). If you want to go back, export everything to GPX first (**Saved > Export**).
+- **Also safer than before:** a saved file that turns out to be damaged is now set aside as `saved.json.unreadable` instead of being overwritten by the next save, and a place can no longer be saved in the split second before the saved file has been read at start (which could have replaced the file with only that place).
+
+**Not encrypted, on purpose:**
+
+- **Map files, search data, routing data and terrain data** (`maps/*.map`, `poi/*.poi`, `brouter/segments4/*.rd5`, `dem/*.zip`): they're public downloads, hundreds of megabytes to gigabytes each, and the map, search and routing engines read them directly from storage piece by piece. Encrypting them would mean decrypting whole files into memory. Which regions you downloaded can therefore still be seen from MapsCtrl's files, and so can the list of installed maps (`maps/installed.json`), which says nothing the map files next to it don't.
+- **The map style and routing profiles** (`theme/`, `brouter/profiles2/`): copies of files that are in the app itself.
+- **Settings**, including where the map was last looking (so it opens there again), the units, the travel mode and your ntfy server and topic. The last map position is needed before the map is first drawn, and settings are read by parts of the app that must work without waiting for a key. They stay as they were.
+- MapsCtrl keeps no search history, no list of recent destinations and no navigation history, so there was nothing of that kind to encrypt.
+
 ## v0.4.1 (2026-11-20)
 
 Built and checked by CI only: nothing in this release had been run on a phone when it was published.

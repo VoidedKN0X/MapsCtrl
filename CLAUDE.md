@@ -13,7 +13,8 @@ MapsCtrl is its own app. It is **not** a fork of Organic Maps or any other maps 
 - `search/`: `PoiDatabase` reads Mapsforge POI v5 SQLite files read-only through AndroidX `sqlite-bundled` (the platform SQLite has no R-tree or FTS5) (trigram FTS when present, R-tree, categories); `SearchRepository` merges all files and parses coordinates.
 - `routing/`: `Router` (runs BRouter, `timode=1`, `processUnusedTags=1` so maxspeed and speed cameras are in the result), `RouteParser` (BRouter GeoJSON), `Maxspeed`, `Instructions` (turn text; words from `ResourceWords`), `StreetNames` (street for each turn: BRouter way tags if they ever carry `name`/`ref`, else the nearest aligned named way from `MapWayNames`).
 - `nav/`: `RoutePlanner`, `NavigationTracker` (pure logic: snapping, next turn, off-route, announcements, cameras), `NavigationSession` (location, TTS, rerouting, ntfy, debug-only demo drive), `NavigationService` (location foreground service, only with the permission).
-- `saved/`: places and tracks in `filesDir/saved.json`, `Gpx`, `TrackRecorder`.
+- `saved/`: places and tracks in `filesDir/saved.json` (encrypted at rest, see below), `Gpx`, `TrackRecorder`.
+- `data/crypto/`: `SealedFile`, `DataKeyStore`, `KeystoreWrapper`, `KeystoreAes` (encryption at rest for `saved.json`).
 - `ui/home`: `HomeScreen` (map + tabs Map, Saved, Downloads, More; route planning and navigation overlays), `MapOverlay`, `PlaceSheet`, `SearchScreen`, `RoutePanel`, `NavigationOverlay`. Settings open only from the profile picture (You page).
 
 ## Hard rules
@@ -26,6 +27,16 @@ MapsCtrl is its own app. It is **not** a fork of Organic Maps or any other maps 
 - Violet is reserved for the route, the selection and your position; the map style itself stays neutral.
 - Downloads always show their size first and only start when the user taps.
 - Dependency verification is sha256 only (`gradle/verification-metadata.xml`); regenerate it with the workflow or `--write-verification-metadata sha256` after changing dependencies.
+
+## Encryption at rest
+
+- `filesDir/saved.json` (saved places and tracks) is sealed with AES-256-GCM (`data/crypto/SealedFile`, marker `MAPSCTRL-REST1`) under the data key (`DataKeyStore`: 32 random bytes in `filesDir/data.key`, wrapped by the Keystore key `mapsctrl_data_at_rest` through `KeystoreWrapper`/`KeystoreAes`; no user authentication). It protects files copied off the phone, not a running, unlocked app.
+- `SavedRepository` reads both sealed and ordinary files (`SealedFile.isSealed`). Without a data key it reads and writes the ordinary file as before.
+- Never delete or overwrite a file that can't be opened, never replace an existing `data.key`, and never create a Keystore key on the decrypt path (`KeystoreAes.existing`). An ordinary file only becomes a sealed one through `SealedFile.sealInPlace` (temp file, sync, read back, compare, atomic rename). A sealed file that can't be opened turns `SavedRepository.unreadable` on: nothing is written and `AppRoot` shows the "Can't open your saved places" screen ("Start empty" renames the file aside, never deletes it).
+- Key unwrap, sealing and decryption run on `Dispatchers.IO`; every change waits for the first load (`awaitReady`).
+- GPX export and import stay ordinary GPX. A track being recorded lives in memory (`TrackRecorder`) and is sealed when it's saved.
+- Not encrypted, on purpose: `.map`, `.poi`, `.rd5`, `dem/*.zip`, `installed.json`, `theme/`, `brouter/profiles2/` (large, public, opened directly by Mapsforge, SQLite and BRouter) and the DataStore settings (last map position, ntfy server and topic included).
+- `SealedFileTest` covers the format, the migration step and the key rules (CI runs it with `:app:testDebugUnitTest`).
 
 ## Releasing
 

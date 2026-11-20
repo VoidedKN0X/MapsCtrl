@@ -108,6 +108,7 @@ MapsCtrl connects to these servers, and only when you start it:
 - Search, car/bike/foot routes and navigation run on the phone. MapsCtrl never sends what you search for or where you go; the one exception is a public transport search, which you start yourself and which sends only the two points and the time to Transitous ([its privacy policy](https://transitous.org/privacy/)).
 - No map tiles or geocoding from online services, and no car, bike or foot routing from them.
 - Your maps, saved places, tracks and settings are stored in MapsCtrl's private storage and can't be read by other apps. Android backups don't include them.
+- Your saved places and tracks are also encrypted in that storage (AES-256-GCM, with a key that's protected by the phone's secure hardware and never leaves the phone), so a copy of MapsCtrl's files taken off the phone doesn't show them. Downloaded maps, search, routing and terrain data and your settings are not encrypted. GPX exports are ordinary files: keep them somewhere safe yourself. Because the key stays on the phone, an older version of MapsCtrl can't read the encrypted file; export to GPX before going back to one.
 - The Support, Report a bug, Source code and Licence links, and websites on a place sheet, open in your browser only when you tap them.
 
 ## How MapsCtrl is made

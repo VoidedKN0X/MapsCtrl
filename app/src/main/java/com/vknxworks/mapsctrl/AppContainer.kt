@@ -4,6 +4,8 @@ import android.content.Context
 import com.vknxworks.mapsctrl.data.MapRepository
 import com.vknxworks.mapsctrl.data.SegmentRepository
 import com.vknxworks.mapsctrl.data.TerrainRepository
+import com.vknxworks.mapsctrl.data.crypto.DataKeyStore
+import com.vknxworks.mapsctrl.data.crypto.KeystoreWrapper
 import com.vknxworks.mapsctrl.transit.TransitPlanner
 import com.vknxworks.mapsctrl.location.LocationSource
 import com.vknxworks.mapsctrl.nav.NavigationSession
@@ -27,7 +29,9 @@ class AppContainer(val context: Context) {
     val maps = MapRepository(context, appScope)
     val segments = SegmentRepository(context, appScope)
     val search = SearchRepository(maps)
-    val saved = SavedRepository(context, appScope)
+    /** The key that encrypts the saved places and tracks at rest; wrapped by a Keystore key, see data/crypto. */
+    val dataKeys = DataKeyStore(context.filesDir, KeystoreWrapper(DATA_KEY_ALIAS))
+    val saved = SavedRepository(context, appScope, dataKeys)
     val location = LocationSource(context)
     val transit = TransitPlanner(appScope)
     val terrain = TerrainRepository(context, appScope)
@@ -40,6 +44,10 @@ class AppContainer(val context: Context) {
 
     /** The bottom-bar tab to show (set from other screens, e.g. "Download maps"). */
     val openTab = MutableStateFlow<Int?>(null)
+
+    private companion object {
+        const val DATA_KEY_ALIAS = "mapsctrl_data_at_rest"
+    }
 }
 
 val Context.container: AppContainer

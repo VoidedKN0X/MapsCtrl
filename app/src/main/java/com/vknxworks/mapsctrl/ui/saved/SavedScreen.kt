@@ -72,6 +72,8 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
     val fmt = rememberFmt()
     val places by c.saved.places.collectAsStateWithLifecycle()
     val tracks by c.saved.tracks.collectAsStateWithLifecycle()
+    // "Nothing saved yet" only once the saved file has been read (a moment after start).
+    val savedReady by c.saved.ready.collectAsStateWithLifecycle()
     val recording by c.recorder.recording.collectAsStateWithLifecycle()
     val recPoints by c.recorder.points.collectAsStateWithLifecycle()
     val settings by c.settings.settings.collectAsStateWithLifecycle()
@@ -129,7 +131,7 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
             }
         }
 
-        Group(stringResource(R.string.group_places), footer = if (places.isEmpty()) stringResource(R.string.places_empty) else null) {
+        Group(stringResource(R.string.group_places), footer = if (savedReady && places.isEmpty()) stringResource(R.string.places_empty) else null) {
             for (p in places.sortedByDescending { it.created }) {
                 val sub = listOfNotNull(p.category, fix?.let { fmt.distance(Geo.distance(it.point, p.point), settings.units) } ?: p.point.format()).joinToString(" · ")
                 GroupRow(
@@ -148,7 +150,7 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
             }
         }
 
-        Group(stringResource(R.string.group_tracks), footer = if (tracks.isEmpty()) stringResource(R.string.tracks_empty) else null) {
+        Group(stringResource(R.string.group_tracks), footer = if (savedReady && tracks.isEmpty()) stringResource(R.string.tracks_empty) else null) {
             for (t in tracks.sortedByDescending { it.created }) {
                 GroupRow(
                     t.name,
