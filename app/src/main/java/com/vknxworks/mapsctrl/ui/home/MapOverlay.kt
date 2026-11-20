@@ -85,7 +85,6 @@ import kotlin.math.pow
 fun MapOverlay(
     state: HomeState,
     controller: MapController,
-    camera: Camera,
     hasMaps: Boolean,
     hasPermission: Boolean,
     hasFix: Boolean,
@@ -94,6 +93,8 @@ fun MapOverlay(
 ) {
     val c = LocalContext.current.container
     val settings by c.settings.settings.collectAsStateWithLifecycle()
+    // The camera changes on every frame while the map moves; collected here so only this overlay follows it.
+    val camera by controller.camera.collectAsStateWithLifecycle()
     Box(Modifier.fillMaxSize()) {
         // Top: a soft fade from the background so the wordmark reads over any map.
         Column(

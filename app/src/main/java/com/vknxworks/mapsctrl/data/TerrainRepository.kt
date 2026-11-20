@@ -138,11 +138,19 @@ class TerrainRepository(private val context: Context, private val scope: Corouti
     private var running: Job? = null
     @Volatile private var cancelled = false
 
+    private val _ready = MutableStateFlow(false)
+    /** The elevation tiles on the phone have been listed ([files] is empty until then). */
+    val ready: StateFlow<Boolean> = _ready
+
     init {
         scope.launch(Dispatchers.IO) {
-            dir.mkdirs()
-            dir.listFiles()?.filter { it.name.endsWith(".part") }?.forEach { it.delete() }
-            refresh()
+            try {
+                dir.mkdirs()
+                dir.listFiles()?.filter { it.name.endsWith(".part") }?.forEach { it.delete() }
+                refresh()
+            } finally {
+                _ready.value = true
+            }
         }
     }
 

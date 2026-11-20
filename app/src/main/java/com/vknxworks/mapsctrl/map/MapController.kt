@@ -61,7 +61,16 @@ class CtrlMapView(context: Context, private val onUserPan: () -> Unit) : MapView
  * Everything on the map: the vector map from your downloaded .map files in the Ctrl style, the route, saved
  * places and tracks, the selected place and your position. One per screen.
  */
-class MapController(private val context: Context, start: LatLon, startZoom: Float) {
+class MapController(
+    private val context: Context,
+    start: LatLon,
+    startZoom: Float,
+    /** What the map starts with, so the renderer is built once instead of again for each of these. */
+    initialNight: Boolean = false,
+    initialMaps: List<File> = emptyList(),
+    initialDemDir: File? = null,
+    initialDemVersion: Int = 0,
+) {
 
     private val _camera = MutableStateFlow(Camera(start, startZoom.toDouble(), 0f, 0.0))
     val camera: StateFlow<Camera> = _camera
@@ -80,6 +89,8 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
     private var hillsKey: String? = null
 
     private val graphics = AndroidGraphicFactory.INSTANCE
+    /** Changes with every installed build; the theme files are only written again when it changed. */
+    private val themeStamp: String by lazy { CtrlRenderTheme.stamp(context) }
     private val trackLayers = mutableListOf<Polyline>()
     private val routeCasing = line(0xFFFFFFFF.toInt(), 9f)
     private val routeLine = line(0xFF8F5CFF.toInt(), 6f)
@@ -103,6 +114,15 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
         view.model.mapViewPosition.addObserver(object : Observer {
             override fun onChange() = publishCamera()
         })
+        // The maps, the day or night style and hillshading as they are at start: one renderer, not one built
+        // empty and then rebuilt as each of them arrives. The setters below do nothing for what's already set.
+        mapFiles = initialMaps
+        night = initialNight
+        if (initialNight) view.model.displayModel.backgroundColor = 0xFF0B0B0D.toInt()
+        if (initialDemDir != null) {
+            hillsKey = "${initialDemDir.path}#$initialDemVersion"
+            hills = buildHills(initialDemDir)
+        }
         rebuildRenderer()
         val layers = view.layerManager.layers
         trackLayers.clear()
@@ -152,8 +172,8 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
     }
 
     private fun theme(): ExternalRenderTheme {
-        val dir = File(context.filesDir, if (night) "theme/night" else "theme/day")
-        return ExternalRenderTheme(CtrlRenderTheme.write(dir, if (night) CtrlRenderTheme.Night else CtrlRenderTheme.Day))
+        val dir = CtrlRenderTheme.dir(context, night)
+        return ExternalRenderTheme(CtrlRenderTheme.write(dir, if (night) CtrlRenderTheme.Night else CtrlRenderTheme.Day, themeStamp))
     }
 
     private fun rebuildRenderer() {
@@ -181,15 +201,15 @@ class MapController(private val context: Context, start: LatLon, startZoom: Floa
         if (key == hillsKey) return
         hillsKey = key
         hills?.interruptAndDestroy()
-        hills = demDir?.let { d ->
-            runCatching {
-                // The strength comes from the theme (stronger at night, on the dark map).
-                HillsRenderConfig(MemoryCachingHgtReaderTileSource(DemFolderFS(d), AdaptiveClasyHillShading(), graphics))
-                    .indexOnThread()
-            }.getOrNull()
-        }
+        hills = demDir?.let { buildHills(it) }
         rebuildRenderer()
     }
+
+    private fun buildHills(demDir: File): HillsRenderConfig? = runCatching {
+        // The strength comes from the theme (stronger at night, on the dark map).
+        HillsRenderConfig(MemoryCachingHgtReaderTileSource(DemFolderFS(demDir), AdaptiveClasyHillShading(), graphics))
+            .indexOnThread()
+    }.getOrNull()
 
     /** The area covered by the downloaded maps, or null with none. */
     fun dataBounds(): BoundingBox? = runCatching { dataStore?.boundingBox() }.getOrNull()

@@ -1,5 +1,7 @@
 package com.vknxworks.mapsctrl.map
 
+import android.content.Context
+import com.vknxworks.mapsctrl.BuildConfig
 import java.io.File
 
 /**
@@ -48,8 +50,19 @@ object CtrlRenderTheme {
         hillMagnitude = 140,
     )
 
-    /** Writes theme.xml and symbols/ into [dir] and returns the theme file. */
-    fun write(dir: File, p: Palette): File {
+    /**
+     * Writes theme.xml and symbols/ into [dir] and returns the theme file. With a [stamp] (which changes with every
+     * installed build) the files are only written when [dir] doesn't already hold the theme written for that
+     * stamp: otherwise every start, and every change between day and night, wrote the theme and all its
+     * symbols to storage again.
+     */
+    @Synchronized
+    fun write(dir: File, p: Palette, stamp: String? = null): File {
+        val theme = File(dir, "theme.xml")
+        val stampFile = File(dir, ".stamp")
+        if (stamp != null && theme.exists() && runCatching { stampFile.readText() }.getOrNull() == stamp) return theme
+        // Until everything is written again, the folder doesn't count as complete.
+        stampFile.delete()
         dir.mkdirs()
         val symbols = File(dir, "symbols")
         symbols.mkdirs()
@@ -61,9 +74,28 @@ object CtrlRenderTheme {
             }
             File(symbols, "$name.svg").writeText(Symbols.svg(glyph, bg, p.poiGlyph))
         }
-        val f = File(dir, "theme.xml")
-        f.writeText(xml(p))
-        return f
+        theme.writeText(xml(p))
+        if (stamp != null) stampFile.writeText(stamp)
+        return theme
+    }
+
+    /** The folder the day or night theme is written to. */
+    fun dir(context: Context, night: Boolean): File = File(context.filesDir, if (night) "theme/night" else "theme/day")
+
+    /**
+     * What the written theme files belong to: this version, as installed at this moment. A new install (also of
+     * the same version) writes them again, so a changed theme is never left stale.
+     */
+    fun stamp(context: Context): String {
+        val installed = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime }.getOrDefault(0L)
+        return "${BuildConfig.VERSION_CODE}:$installed"
+    }
+
+    /** Writes both themes if they aren't there yet for this build (call it off the main thread). */
+    fun prepare(context: Context) {
+        val stamp = stamp(context)
+        write(dir(context, night = false), Day, stamp)
+        write(dir(context, night = true), Night, stamp)
     }
 
     private fun sym(name: String, zoom: Int, priority: Int = 0) =

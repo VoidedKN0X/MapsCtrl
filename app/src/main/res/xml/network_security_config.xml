@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MapsCtrl only goes online for what you start (map, search, routing and terrain downloads, a public transport
+     search, ETA sharing), always over HTTPS. Plain HTTP is refused everywhere, and only the phone's built-in
+     certificate authorities are trusted (no user-installed ones). This is what Android already does for
+     MapsCtrl by default; it's written down here so it can't change by accident. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

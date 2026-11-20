@@ -78,13 +78,18 @@ class MapRepository(private val context: Context, private val scope: CoroutineSc
     private val jobs = HashMap<String, Job>()
     private val cancelled = HashSet<String>()
 
+    private val _ready = MutableStateFlow(false)
+    /** The list of downloaded maps has been read from storage ([installed] is empty until then). */
+    val ready: StateFlow<Boolean> = _ready
+
     init {
         scope.launch(Dispatchers.IO) {
             mapsDir.mkdirs()
             poiDir.mkdirs()
             val list = runCatching { json.decodeFromString<List<InstalledMap>>(indexFile.readText()) }.getOrDefault(emptyList())
             // Drop entries whose file is gone, and clean up half-finished downloads.
-            _installed.value = list.filter { mapFile(it.path).exists() }
+            _installed.value = runCatching { list.filter { mapFile(it.path).exists() } }.getOrDefault(emptyList())
+            _ready.value = true
             mapsDir.listFiles()?.filter { it.name.endsWith(".part") }?.forEach { it.delete() }
             poiDir.listFiles()?.filter { it.name.endsWith(".part") }?.forEach { it.delete() }
         }

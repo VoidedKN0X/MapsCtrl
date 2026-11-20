@@ -38,6 +38,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -52,11 +53,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vknxworks.mapsctrl.R
 import com.vknxworks.mapsctrl.container
 import com.vknxworks.mapsctrl.geo.Coordinates
 import com.vknxworks.mapsctrl.geo.LatLon
+import com.vknxworks.mapsctrl.map.CtrlRenderTheme
 import com.vknxworks.mapsctrl.map.MapController
 import com.vknxworks.mapsctrl.nav.PlanStatus
 import com.vknxworks.mapsctrl.nav.RouteStart
@@ -72,10 +75,14 @@ import com.vknxworks.mapsctrl.ui.downloads.DownloadsScreen
 import com.vknxworks.mapsctrl.ui.more.MoreScreen
 import com.vknxworks.mapsctrl.ui.saved.SavedScreen
 import com.vknxworks.mapsctrl.ui.theme.Gutter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 enum class Follow { OFF, FOLLOW, COMPASS }
 
@@ -103,8 +110,19 @@ const val TAB_MORE = 3
 fun HomeScreen() {
     val context = LocalContext.current
     val c = context.container
-    // Wait for the saved settings once, so the map opens where you left it.
-    val initial by produceState<AppSettings?>(null) { value = c.settings.loaded() }
+    // Wait for the saved settings once, so the map opens where you left it; and for the lists of downloaded maps
+    // and elevation tiles and the map style files, so the map is set up once, with all of them, instead of being
+    // rebuilt as each one arrives.
+    val initial by produceState<AppSettings?>(null) {
+        c.maps.ready.first { it }
+        c.terrain.ready.first { it }
+        withContext(Dispatchers.IO) { runCatching { CtrlRenderTheme.prepare(context.applicationContext) } }
+        val loaded = c.settings.loaded()
+        // The settings the screens observe catch up with the saved ones a moment later; wait for that too (briefly),
+        // so the map isn't set up with the saved style and then reset to the defaults for one frame.
+        withTimeoutOrNull(1_000) { c.settings.settings.first { it == loaded } }
+        value = loaded
+    }
     val start = initial ?: return
     HomeContent(start)
 }
@@ -118,7 +136,10 @@ private fun HomeContent(start: AppSettings) {
     val settings by c.settings.settings.collectAsStateWithLifecycle()
     val plan by c.planner.state.collectAsStateWithLifecycle()
     val nav by c.navigation.state.collectAsStateWithLifecycle()
-    val fix by c.location.fix.collectAsStateWithLifecycle()
+    // Read only where it's needed (never in this composable's own body), so the once-a-second position updates
+    // don't recompose the whole home screen; see PositionFeed.
+    val fixState = c.location.fix.collectAsStateWithLifecycle()
+    val hasFix by remember { derivedStateOf { fixState.value != null } }
     val installed by c.maps.installed.collectAsStateWithLifecycle()
     val savedPlaces by c.saved.places.collectAsStateWithLifecycle()
     val tracks by c.saved.tracks.collectAsStateWithLifecycle()
@@ -129,8 +150,19 @@ private fun HomeContent(start: AppSettings) {
     val dark = isSystemInDarkTheme()
     val night = when (settings.mapStyle) { MapStyle.SYSTEM -> dark; MapStyle.DAY -> false; MapStyle.NIGHT -> true }
 
-    val controller = remember { MapController(context, LatLon(start.lastLat, start.lastLon), start.lastZoom) }
-    val camera by controller.camera.collectAsStateWithLifecycle()
+    val controller = remember {
+        // With what's known at start (HomeScreen waited for it), so the map renderer is built exactly once.
+        val dem = c.terrain.files.value
+        MapController(
+            context, LatLon(start.lastLat, start.lastLon), start.lastZoom,
+            initialNight = when (start.mapStyle) { MapStyle.SYSTEM -> dark; MapStyle.DAY -> false; MapStyle.NIGHT -> true },
+            initialMaps = c.maps.installed.value.map { c.maps.mapFile(it.path) }.filter { it.exists() },
+            initialDemDir = if (start.hillshading && dem.isNotEmpty()) c.terrain.dir else null,
+            initialDemVersion = dem.keys.hashCode(),
+        )
+    }
+    // The camera changes on every frame of a pan, zoom or turn: it's read where it's needed (MapOverlay collects
+    // it itself), not here, so moving the map doesn't recompose the whole home screen.
     DisposableEffect(controller) { onDispose { controller.destroy() } }
 
     // ---- Location ----
@@ -143,12 +175,12 @@ private fun HomeContent(start: AppSettings) {
             state.follow = Follow.FOLLOW
         }
     }
-    DisposableEffect(hasPermission) {
+    // The map's own use of your position follows the screen: it stops when MapsCtrl leaves the screen and starts
+    // again when it's back. Navigation and track recording ask for the position themselves and keep running.
+    LifecycleStartEffect(hasPermission) {
         if (hasPermission) c.location.start("map")
-        onDispose { c.location.stop("map") }
+        onStopOrDispose { c.location.stop("map") }
     }
-    val compass = rememberCompass(state.follow == Follow.COMPASS || nav != null)
-    val heading: Float? = fix?.let { f -> if ((f.speed ?: 0f) > 1.5f && f.bearing != null) f.bearing else compass }
 
     fun askLocation() = permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
 
@@ -177,30 +209,20 @@ private fun HomeContent(start: AppSettings) {
     LaunchedEffect(savedPlaces) { controller.setSaved(savedPlaces) }
     LaunchedEffect(state.selected) { controller.setSelected(state.selected?.point) }
     LaunchedEffect(state.results, state.searchOpen) { controller.setResults(if (state.selected == null) state.results.map { it.place.point } else emptyList()) }
-    LaunchedEffect(fix, heading) { controller.setFix(fix, heading) }
-    LaunchedEffect(plan.destination, plan.start, fix == null) {
+    LaunchedEffect(plan.destination, plan.start, !hasFix) {
         val s = when (val st = plan.start) { RouteStart.MyLocation -> null; is RouteStart.At -> st.place.point }
         controller.setRouteEnds(if (plan.destination != null) s else null, plan.destination?.point)
     }
     // Show a new route whole.
     LaunchedEffect(route) { if (route != null && nav == null) controller.fit(route.points) }
 
-    // Follow your position; while navigating, heading up.
-    LaunchedEffect(fix, state.follow, nav != null, state.navPanned, heading) {
-        val f = fix ?: return@LaunchedEffect
-        if (nav != null && !state.navPanned) {
-            controller.moveTo(f.point, animate = false)
-            controller.rotate(heading ?: 0f)
-        } else if (state.follow != Follow.OFF && nav == null) {
-            controller.moveTo(f.point)
-            if (state.follow == Follow.COMPASS) controller.rotate(heading ?: 0f)
-        }
-    }
+    // Your position and heading on the map, and the map following you.
+    PositionFeed(controller, state, navigating = nav != null)
     LaunchedEffect(nav != null) {
         if (nav != null) {
             state.navPanned = false
             controller.moveTo(nav?.route?.points?.firstOrNull() ?: return@LaunchedEffect, 17)
-        } else if (camera.rotation != 0f) controller.rotate(0f)
+        } else if (controller.camera.value.rotation != 0f) controller.rotate(0f)
     }
 
     // Remember where the map was.
@@ -230,7 +252,7 @@ private fun HomeContent(start: AppSettings) {
                     state.selected = null
                 } else {
                     scope.launch {
-                        val radius = (camera.metersPerPixel * 28 * context.resources.displayMetrics.density).coerceIn(5.0, 400.0)
+                        val radius = (controller.camera.value.metersPerPixel * 28 * context.resources.displayMetrics.density).coerceIn(5.0, 400.0)
                         c.search.nearest(p, radius)?.let { state.selected = it }
                     }
                 }
@@ -294,7 +316,7 @@ private fun HomeContent(start: AppSettings) {
                 planning -> RoutePanel(
                     plan = plan,
                     settings = settings,
-                    hasLocation = fix != null,
+                    hasLocation = hasFix,
                     hasPermission = hasPermission,
                     pickingStart = state.pickStart,
                     onPickStart = { state.pickStart = true },
@@ -311,10 +333,9 @@ private fun HomeContent(start: AppSettings) {
                 state.tab == TAB_MAP -> MapOverlay(
                     state = state,
                     controller = controller,
-                    camera = camera,
                     hasMaps = installed.isNotEmpty(),
                     hasPermission = hasPermission,
-                    hasFix = fix != null,
+                    hasFix = hasFix,
                     onAskLocation = ::askLocation,
                     onRoute = { place -> c.planner.open(place, settings.travelMode) },
                 )
@@ -329,7 +350,8 @@ private fun HomeContent(start: AppSettings) {
             if (state.searchOpen) {
                 SearchScreen(
                     state = state,
-                    near = fix?.point ?: camera.center,
+                    // Read here, so it's only followed while search is open.
+                    near = fixState.value?.point ?: controller.camera.value.center,
                     onPick = { place ->
                         state.searchOpen = false
                         state.tab = TAB_MAP
@@ -362,6 +384,31 @@ private fun HomeContent(start: AppSettings) {
 }
 
 private fun com.vknxworks.mapsctrl.nav.PlanState.destinationSet() = destination != null
+
+/**
+ * Feeds your position and heading to the map and keeps the map following you (while navigating, heading up).
+ * It draws nothing; it's its own composable so the position (once a second) and the compass (five times a
+ * second) only recompose this, not the whole home screen.
+ */
+@Composable
+private fun PositionFeed(controller: MapController, state: HomeState, navigating: Boolean) {
+    val c = LocalContext.current.container
+    val fix by c.location.fix.collectAsStateWithLifecycle()
+    val compass = rememberCompass(state.follow == Follow.COMPASS || navigating)
+    val heading: Float? = fix?.let { f -> if ((f.speed ?: 0f) > 1.5f && f.bearing != null) f.bearing else compass }
+    LaunchedEffect(fix, heading) { controller.setFix(fix, heading) }
+    // Follow your position; while navigating, heading up.
+    LaunchedEffect(fix, state.follow, navigating, state.navPanned, heading) {
+        val f = fix ?: return@LaunchedEffect
+        if (navigating && !state.navPanned) {
+            controller.moveTo(f.point, animate = false)
+            controller.rotate(heading ?: 0f)
+        } else if (state.follow != Follow.OFF && !navigating) {
+            controller.moveTo(f.point)
+            if (state.follow == Follow.COMPASS) controller.rotate(heading ?: 0f)
+        }
+    }
+}
 
 /** A tab page drawn over the map. */
 @Composable

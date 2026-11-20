@@ -4,6 +4,25 @@ What changed in each MapsCtrl release. Every release on the [Releases page](http
 
 To publish a new version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, add a section here, and push to `main`. Pushes without a version bump only build; they don't make a release.
 
+## Unreleased
+
+Not released yet: these changes are on `main` and come with the next version.
+
+### Changed
+
+- **The map opens faster.** At start the map was set up up to four times in a row: once empty, again when the list of downloaded maps arrived, again for the night style on a dark phone, and again when hillshading is on. Each time every map file was opened and the drawn tiles were thrown away. MapsCtrl now waits a moment for those three things and sets the map up once, with all of them.
+- **The map style is written to storage once, not at every start.** MapsCtrl's map style and all its symbols were written to the phone's storage again every time the map was set up and every time it switched between day and night, on the main thread. They're now written once per installed build (in the background, before the map opens) and reused.
+- **Moving the map is smoother.** Panning, zooming or turning the map, each new position (once a second) and each compass reading (five times a second) made the whole home screen work out its layout again. Now only the parts that show them follow them: the map buttons and scale bar follow the map, and a small invisible part feeds your position and heading to the map. Nothing looks or behaves differently; navigation still gets your position once a second.
+- **The map stops using your position when MapsCtrl isn't on screen.** Just looking at the map kept the phone's location running after you switched to another app or turned the screen off, until Android ended the app. It now stops when MapsCtrl leaves the screen and starts again when you come back. Navigation and track recording are not affected: they keep your position going in the background with their notification, as before.
+
+### Security
+
+- **Written down: HTTPS only, and only the phone's own certificate authorities.** MapsCtrl already refused plain HTTP in its own code, and Android already ignores user-installed certificates for it. A network security configuration now states both, like in the other Ctrl apps, so neither can change by accident.
+- **No debug logging from libraries in release builds** (verbose, debug and info log calls are removed when the app is built, as in the other Ctrl apps; MapsCtrl's own two warnings about a damaged search file stay).
+- **The build checks the Gradle download** against its published SHA-256 checksum, as the other Ctrl apps already did.
+
+MapsCtrl has no home-screen widget and no Quick Settings tile, so there was nothing to remove.
+
 ## v0.4.0 (2026-11-13)
 
 ### New
