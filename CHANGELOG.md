@@ -4,6 +4,18 @@ What changed in each MapsCtrl release. Every release on the [Releases page](http
 
 To publish a new version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, add a section here, and push to `main`. Pushes without a version bump only build; they don't make a release.
 
+## Unreleased
+
+Built and checked by CI only: nothing here has been run on a phone yet.
+
+### Changed
+
+- **Recording a long track stays fast.** For every new point of a recording MapsCtrl made a fresh copy of the whole track so far, so a long ride cost more and more work per point (a 100 km ride is about 20,000 points). The recording now grows in place and the map and the Saved tab are handed a view of it instead of a copy. The length shown under "Recording now" on the Saved tab is added up as the points come in, instead of being measured over the whole track again each time. The saved track, its points and its times are the same as before.
+- **The compass is switched off while you ride.** While navigating (and in compass mode), the compass sensor ran the whole time, although above walking pace the map already takes your direction from the GPS and ignored the compass. The sensor is now switched off above about 22 km/h and switched on again below about 14 km/h, well before the compass is used again (below about 5 km/h). If you brake so hard that the compass is needed before it has given its first reading, the map keeps your last GPS direction until it has, so it doesn't swing north for a moment. On foot and when cycling slowly nothing changes. A phone without a compass behaves exactly as before.
+- **Downloaded maps are opened in the background at start.** Opening each downloaded map file (reading its header) happened on the main thread while the map screen was being set up; with several country maps that could hold up the first frame. It's now done on a background thread just before the map is built. The map that appears is the same.
+- **Speed cameras along a route are matched in the background.** When navigation starts (and after a reroute), every speed camera from your search data near the route was matched against the whole route on the main thread, which could make the screen stutter for a moment on a long route. That now happens on a background thread; the warnings are the same.
+- **The voice engine is let go when a trip ends.** After your first navigation, MapsCtrl stayed connected to the phone's text-to-speech engine until Android closed the app. It now disconnects when you end navigation and connects again when the next trip starts (or when you tap "Test the voice"), exactly like the first trip after opening the app. Ending navigation also hands back the audio focus straight away, so music that was turned down for a sentence that got cut off goes back to normal volume.
+
 ## v0.5.0 (2026-11-20)
 
 **This release encrypts some of what the app stores on the phone. An older version cannot read it afterwards, so export or back up anything you need before you update (details below).** Built and checked by CI only: nothing in this release had been run on a phone when it was published.

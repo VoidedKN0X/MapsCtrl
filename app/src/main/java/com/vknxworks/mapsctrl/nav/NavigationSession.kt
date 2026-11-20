@@ -20,6 +20,7 @@ import com.vknxworks.mapsctrl.search.SearchRepository
 import com.vknxworks.mapsctrl.settings.SettingsRepository
 import com.vknxworks.mapsctrl.share.Ntfy
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -79,7 +81,7 @@ class NavigationSession(
         .build()
 
     fun start(route: Route, destination: Place, demo: Boolean = false) {
-        stop()
+        end(releaseVoice = false)
         tracker = NavigationTracker(route)
         warnedCameras.clear()
         _state.value = NavState(route, destination, demo = demo)
@@ -94,7 +96,10 @@ class NavigationSession(
         startNtfy()
     }
 
-    fun stop() {
+    fun stop() = end(releaseVoice = true)
+
+    /** Ends navigation. [releaseVoice]: also let go of the text-to-speech engine (not when a new trip starts right away). */
+    private fun end(releaseVoice: Boolean) {
         follow?.cancel()
         demoJob?.cancel()
         ntfyJob?.cancel()
@@ -108,6 +113,17 @@ class NavigationSession(
             NavigationService.stop(context)
         }
         tts?.stop()
+        // The voice engine was kept connected for as long as the app lived after one trip; it's released when the
+        // trip ends and connected again at the next start (or voice test).
+        if (releaseVoice && was != null) releaseTts()
+    }
+
+    private fun releaseTts() {
+        tts?.shutdown()
+        tts = null
+        ttsReady = false
+        // Nothing will say "done" for a sentence that was cut off: give the audio focus back here.
+        audio.abandonAudioFocusRequest(focus)
     }
 
     fun toggleMute() = _state.update { it?.copy(muted = !it.muted) }
@@ -178,7 +194,11 @@ class NavigationSession(
                 route.points.minOf { it.lat } - pad, route.points.minOf { it.lon } - pad,
                 route.points.maxOf { it.lat } + pad, route.points.maxOf { it.lon } + pad,
             )
-            if (cams.isNotEmpty() && _state.value?.route === route) tracker = NavigationTracker(route, cams)
+            if (cams.isNotEmpty() && _state.value?.route === route) {
+                // Matching every camera to the route is work for a background thread, not the main one.
+                val withCameras = withContext(Dispatchers.Default) { NavigationTracker(route, cams) }
+                if (_state.value?.route === route) tracker = withCameras
+            }
         }
     }
 
@@ -186,20 +206,25 @@ class NavigationSession(
 
     private fun initTts() {
         if (tts != null) return
-        tts = TextToSpeech(context.applicationContext) { status ->
-            ttsReady = status == TextToSpeech.SUCCESS
-            if (ttsReady) {
-                tts?.setAudioAttributes(navAttributes())
-                val lang = tts?.isLanguageAvailable(Locale.getDefault()) ?: TextToSpeech.LANG_NOT_SUPPORTED
-                tts?.language = if (lang >= TextToSpeech.LANG_AVAILABLE) Locale.getDefault() else Locale.ENGLISH
-                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {}
-                    override fun onDone(utteranceId: String?) { audio.abandonAudioFocusRequest(focus) }
-                    @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) { audio.abandonAudioFocusRequest(focus) }
-                })
+        var engine: TextToSpeech? = null
+        engine = TextToSpeech(context.applicationContext) { status ->
+            // Only for the engine that's in use now: one that was released before it was ready is ignored.
+            if (tts === engine) {
+                ttsReady = status == TextToSpeech.SUCCESS
+                if (ttsReady) {
+                    tts?.setAudioAttributes(navAttributes())
+                    val lang = tts?.isLanguageAvailable(Locale.getDefault()) ?: TextToSpeech.LANG_NOT_SUPPORTED
+                    tts?.language = if (lang >= TextToSpeech.LANG_AVAILABLE) Locale.getDefault() else Locale.ENGLISH
+                    tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                        override fun onStart(utteranceId: String?) {}
+                        override fun onDone(utteranceId: String?) { audio.abandonAudioFocusRequest(focus) }
+                        @Deprecated("Deprecated in Java")
+                        override fun onError(utteranceId: String?) { audio.abandonAudioFocusRequest(focus) }
+                    })
+                }
             }
         }
+        tts = engine
     }
 
     private fun speak(text: String, force: Boolean = false) {
@@ -212,10 +237,8 @@ class NavigationSession(
     }
 
     fun shutdown() {
-        stop()
-        tts?.shutdown()
-        tts = null
-        ttsReady = false
+        end(releaseVoice = false)
+        releaseTts()
     }
 
     // ---------- ETA sharing ----------
