@@ -76,6 +76,7 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
     val savedReady by c.saved.ready.collectAsStateWithLifecycle()
     val recording by c.recorder.recording.collectAsStateWithLifecycle()
     val recPoints by c.recorder.points.collectAsStateWithLifecycle()
+    val recLength by c.recorder.distance.collectAsStateWithLifecycle()
     val settings by c.settings.settings.collectAsStateWithLifecycle()
     val fix by c.location.fix.collectAsStateWithLifecycle()
     var renaming by remember { mutableStateOf<SavedPlace?>(null) }
@@ -110,7 +111,7 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
 
         Group(stringResource(R.string.group_recording), footer = if (!c.location.hasPermission()) stringResource(R.string.recording_needs_location) else null) {
             if (recording) {
-                val len = recPoints.zipWithNext().sumOf { (a, b) -> Geo.distance(a, b) }
+                val len = recLength
                 GroupRow(
                     stringResource(R.string.recording_now),
                     stringResource(R.string.recording_stats, recPoints.size, fmt.distance(len, settings.units)),
