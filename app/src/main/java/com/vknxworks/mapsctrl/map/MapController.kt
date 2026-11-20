@@ -274,8 +274,19 @@ class MapController(
     }
 
     fun setRecording(points: List<LatLon>) {
-        recording.latLongs.clear()
-        recording.latLongs.addAll(points.map { LatLong(it.lat, it.lon) })
+        val drawn = recording.latLongs
+        val n = drawn.size
+        val last = drawn.lastOrNull()
+        // A recording only grows at its end. When the new list starts with what's already drawn (same length or
+        // longer, same point where the drawn line ends), only the new points are added, instead of converting
+        // and adding the whole track again for every new point.
+        if (n > 0 && last != null && points.size >= n && last.latitude == points[n - 1].lat && last.longitude == points[n - 1].lon) {
+            if (points.size == n) return
+            drawn.addAll(points.subList(n, points.size).map { LatLong(it.lat, it.lon) })
+        } else {
+            drawn.clear()
+            drawn.addAll(points.map { LatLong(it.lat, it.lon) })
+        }
         recording.requestRedraw()
     }
 
