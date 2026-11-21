@@ -36,6 +36,10 @@
     <string name="copied">Copié</string>
     <string name="more_details">%1$d détails de plus</string>
     <string name="detail_wheelchair">Accès fauteuil roulant : %1$s</string>
+    <string name="wheelchair_yes">oui</string>
+    <string name="wheelchair_no">non</string>
+    <string name="wheelchair_limited">limité</string>
+    <string name="wheelchair_designated">aménagé</string>
     <string name="search_no_data_title">Pas encore de données de recherche</string>
     <string name="search_no_data_body">La recherche fonctionne hors ligne avec les données de recherche fournies avec chaque carte. Téléchargez une carte dans Téléchargements, avec « Données de recherche » activé. Les coordonnées fonctionnent sans.</string>
     <string name="search_nothing_title">Aucun résultat</string>

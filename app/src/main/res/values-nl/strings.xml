@@ -37,6 +37,10 @@
     <string name="copied">Gekopieerd</string>
     <string name="more_details">Nog %1$d details</string>
     <string name="detail_wheelchair">Rolstoeltoegankelijk: %1$s</string>
+    <string name="wheelchair_yes">ja</string>
+    <string name="wheelchair_no">nee</string>
+    <string name="wheelchair_limited">beperkt</string>
+    <string name="wheelchair_designated">speciaal ingericht</string>
     <string name="search_no_data_title">Nog geen zoekgegevens</string>
     <string name="search_no_data_body">Zoeken werkt offline met de zoekgegevens die bij elke kaart horen. Download een kaart in Downloads, met \"Zoekgegevens\" aan. Coördinaten werken ook zonder.</string>
     <string name="search_nothing_title">Niets gevonden</string>

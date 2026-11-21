@@ -184,7 +184,17 @@ private fun details(context: Context, p: Place): List<Detail> {
         out += Detail(Icons.Outlined.Language, w.removePrefix("https://").removePrefix("http://").trimEnd('/')) { ctx -> open(ctx, Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
     }
     t["cuisine"]?.let { out += Detail(Icons.Outlined.Restaurant, it.split(';').joinToString(", ") { s -> s.trim().replace('_', ' ') }) }
-    t["wheelchair"]?.let { out += Detail(Icons.Outlined.Accessible, context.getString(R.string.detail_wheelchair, it)) }
+    t["wheelchair"]?.let {
+        // OpenStreetMap's values are English keywords; show the common ones in the phone's language.
+        val v = when (it.trim().lowercase()) {
+            "yes" -> context.getString(R.string.wheelchair_yes)
+            "no" -> context.getString(R.string.wheelchair_no)
+            "limited" -> context.getString(R.string.wheelchair_limited)
+            "designated" -> context.getString(R.string.wheelchair_designated)
+            else -> it
+        }
+        out += Detail(Icons.Outlined.Accessible, context.getString(R.string.detail_wheelchair, v))
+    }
     // Everything else that's informative, as "key: value".
     val skip = setOf("name", "opening_hours", "phone", "contact:phone", "website", "contact:website", "url", "cuisine", "wheelchair", "source", "note:name")
     t.filterKeys { k -> k !in skip && !k.startsWith("addr:") && !k.startsWith("name:") && !k.startsWith("wikidata") && !k.startsWith("wikimedia") && !k.contains("wikipedia") && !k.startsWith("brand:") && !k.startsWith("source:") && !k.startsWith("check_date") }

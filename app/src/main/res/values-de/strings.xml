@@ -36,6 +36,10 @@
     <string name="copied">Kopiert</string>
     <string name="more_details">%1$d weitere Details</string>
     <string name="detail_wheelchair">Rollstuhlzugang: %1$s</string>
+    <string name="wheelchair_yes">ja</string>
+    <string name="wheelchair_no">nein</string>
+    <string name="wheelchair_limited">eingeschränkt</string>
+    <string name="wheelchair_designated">speziell eingerichtet</string>
     <string name="search_no_data_title">Noch keine Suchdaten</string>
     <string name="search_no_data_body">Die Suche funktioniert offline mit den Suchdaten, die zu jeder Karte gehören. Lade eine Karte unter Downloads herunter, mit „Suchdaten“ an. Koordinaten funktionieren auch ohne.</string>
     <string name="search_nothing_title">Nichts gefunden</string>

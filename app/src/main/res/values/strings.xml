@@ -43,12 +43,16 @@
     <string name="copied">Copied</string>
     <string name="more_details">%1$d more details</string>
     <string name="detail_wheelchair">Wheelchair access: %1$s</string>
+    <string name="wheelchair_yes">yes</string>
+    <string name="wheelchair_no">no</string>
+    <string name="wheelchair_limited">limited</string>
+    <string name="wheelchair_designated">designated</string>
 
     <!-- Search -->
     <string name="search_no_data_title">No search data yet</string>
-    <string name="search_no_data_body">Search works offline with the search data that comes with each map. Download a map in Downloads, with "Search data" on. Coordinates work without it.</string>
+    <string name="search_no_data_body">Search works offline with the search data that comes with each map. Download a map in Downloads, with \"Search data\" on. Coordinates work without it.</string>
     <string name="search_nothing_title">Nothing found</string>
-    <string name="search_nothing_body">Try another spelling, a street name, a category such as "pharmacy", or coordinates.</string>
+    <string name="search_nothing_body">Try another spelling, a street name, a category such as \"pharmacy\", or coordinates.</string>
     <string name="search_show_on_map">Show all %1$d on the map</string>
     <string name="cat_food">Food</string>
     <string name="cat_fuel">Fuel</string>

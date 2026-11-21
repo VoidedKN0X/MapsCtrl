@@ -4,6 +4,14 @@ What changed in each MapsCtrl release. Every release on the [Releases page](http
 
 To publish a new version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, add a section here, and push to `main`. Pushes without a version bump only build; they don't make a release.
 
+## Unreleased
+
+### Fixed
+
+- **Quotes back in two search messages.** In English, "Search data" in the "no search data" message and "pharmacy" in the "nothing found" message lost their quote marks (Android drops unescaped quotes). They show again.
+- **Wheelchair access in your language.** A place's wheelchair detail showed OpenStreetMap's English value ("Wheelchair access: yes"). The usual values (yes, no, limited, designated) now show in Dutch, French or German too; anything unusual is still shown as the map has it.
+- **Scale bar in miles uses your decimal separator.** With imperial units the map's scale bar wrote "0.5 mi" with a point in every language; it now follows the phone's number format ("0,5 mi").
+
 ## v0.8.0 (2026-11-21)
 
 Built and checked by CI only: nothing in this release had been run on a phone when it was published.

@@ -225,7 +225,7 @@ fun ScaleBar(metersPerPixel: Double, units: Units, modifier: Modifier = Modifier
                 nf / 3.28084 to stringResource(R.string.unit_ft, nf.toInt())
             } else {
                 val nm = niceNumber(feet / 5280)
-                nm * 1609.344 to stringResource(R.string.unit_mi, if (nm % 1.0 == 0.0) nm.toInt().toString() else nm.toString())
+                nm * 1609.344 to stringResource(R.string.unit_mi, java.text.NumberFormat.getNumberInstance().format(nm))
             }
         }
     }
