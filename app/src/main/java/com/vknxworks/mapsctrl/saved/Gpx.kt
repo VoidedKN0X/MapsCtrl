@@ -23,7 +23,8 @@ data class GpxData(val waypoints: List<GpxWaypoint>, val tracks: List<GpxTrack>)
 /** GPX 1.1 (and 1.0) files: waypoints become saved places, tracks and routes become saved tracks. */
 object Gpx {
 
-    fun read(input: InputStream): GpxData {
+    /** [trackName] and [routeName] name unnamed tracks and routes by their number (from 1). */
+    fun read(input: InputStream, trackName: (Int) -> String = { "Track $it" }, routeName: (Int) -> String = { "Route $it" }): GpxData {
         val f = DocumentBuilderFactory.newInstance()
         f.isNamespaceAware = false
         f.isExpandEntityReferences = false
@@ -45,13 +46,13 @@ object Gpx {
             val points = segs.map { s -> s.mapNotNull { it.first } }.filter { it.isNotEmpty() }
             val times = segs.map { s -> s.filter { it.first != null }.map { it.second } }.filter { it.isNotEmpty() }
             val eles = segs.map { s -> s.filter { it.first != null }.map { it.third } }.filter { it.isNotEmpty() }
-            if (points.isNotEmpty()) tracks += GpxTrack(text(trk, "name") ?: "Track ${i + 1}", points, times, eles.takeIf { e -> e.any { s -> s.any { it != null } } }.orEmpty())
+            if (points.isNotEmpty()) tracks += GpxTrack(text(trk, "name") ?: trackName(i + 1), points, times, eles.takeIf { e -> e.any { s -> s.any { it != null } } }.orEmpty())
         }
         children(root, "rte").forEachIndexed { i, rte ->
             val pts = children(rte, "rtept").mapNotNull { e -> point(e)?.let { it to ele(e) } }
             if (pts.isNotEmpty()) {
                 val eles = pts.map { it.second }
-                tracks += GpxTrack(text(rte, "name") ?: "Route ${i + 1}", listOf(pts.map { it.first }), elevations = if (eles.any { it != null }) listOf(eles) else emptyList())
+                tracks += GpxTrack(text(rte, "name") ?: routeName(i + 1), listOf(pts.map { it.first }), elevations = if (eles.any { it != null }) listOf(eles) else emptyList())
             }
         }
         return GpxData(waypoints, tracks)

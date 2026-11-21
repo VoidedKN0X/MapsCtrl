@@ -103,7 +103,7 @@ class NavigationSession(
         destination: Place,
         demo: Boolean = false,
         stops: List<Place> = emptyList(),
-        follow: Boolean = false,
+        followingTrack: Boolean = false,
         elevation: ElevationProfile? = ElevationProfile.of(route.points, route.elevations),
     ) {
         end(releaseVoice = false)
@@ -113,7 +113,7 @@ class NavigationSession(
         overSpeed = null
         offTrack = false
         _state.value = NavState(
-            route, destination, demo = demo, stops = stops, follow = follow,
+            route, destination, demo = demo, stops = stops, follow = followingTrack,
             stats = TripStats(System.currentTimeMillis()), elevation = elevation,
         )
         initTts()
@@ -149,7 +149,7 @@ class NavigationSession(
             sections = emptyList(),
             elevations = if (heights.isNotEmpty() && heights.all { it != null }) heights.map { it!! } else emptyList(),
         )
-        start(route, Place(track.name, points.last()), demo = demo, follow = true, elevation = ElevationProfile.of(points, heights))
+        start(route, Place(track.name, points.last()), demo = demo, followingTrack = true, elevation = ElevationProfile.of(points, heights))
     }
 
     /** Average speeds for the time left on a track, in m/s: 50, 25, 16 and 4.5 km/h. */

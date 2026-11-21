@@ -494,4 +494,22 @@
     <string name="closed_now_short">Closed now</string>
     <string name="open_now_none_title">Nothing open right now</string>
     <string name="open_now_none_body">None of the %1$d places found is open by its listed hours. Places without opening hours in the map data, or with hours MapsCtrl can\'t read (holidays, months, dates), are left out while \"Open now\" is on.</string>
+    <!-- Back up and restore settings -->
+    <string name="backup_title">Back up and restore</string>
+    <string name="backup_footer">The file holds MapsCtrl\'s settings only. Not in it: your ntfy topic (treated like a password), where the map was last, and your saved places, tracks and recent searches (export places and tracks as GPX in Saved). Restoring never turns \"Hide in screenshots\" off.</string>
+    <string name="backup_save">Save settings to a file</string>
+    <string name="backup_save_sub">A small JSON file in a place you pick</string>
+    <string name="backup_restore">Restore settings from a file</string>
+    <string name="backup_restore_sub">Shows what will change and asks first</string>
+    <string name="backup_saved">Settings saved</string>
+    <string name="backup_save_failed">Couldn\'t save the settings file</string>
+    <string name="backup_not_valid">This isn\'t a MapsCtrl settings file</string>
+    <string name="backup_too_new">This settings file is from a newer MapsCtrl. Update MapsCtrl first.</string>
+    <string name="backup_restore_title">Restore settings?</string>
+    <string name="backup_restore_body">From the file saved on %1$s, these settings will be replaced:\n\n%2$s</string>
+    <string name="backup_restore_same">The file saved on %1$s has the same settings as now. Nothing will change.</string>
+    <string name="backup_restore_confirm">Restore</string>
+    <string name="backup_restored">Settings restored</string>
+    <string name="gpx_track_n">Track %1$d</string>
+    <string name="gpx_route_n">Route %1$d</string>
 </resources>

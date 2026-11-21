@@ -120,6 +120,8 @@ fun SettingsScreen() {
                     if (!v) scope.launch { c.saved.clearRecent() }
                 }
             }
+
+            BackupGroup()
         }
     }
 }

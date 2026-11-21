@@ -37,6 +37,7 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 - **Follow a GPX track:** follow an imported or recorded track like a route, with the distance and time left, the distance ridden, moving time, average and top speed, how far along you are and the climb still ahead. No turn directions or rerouting; leaving the track is said once
 - **Over-speed alert** (off by default): a beep and a spoken warning while navigating when you go faster than the road's limit plus a margin you choose. On a moped the limit is never more than 25 km/h
 - **Share your ETA with ntfy** (off by default): while navigating, your arrival time and the distance left go to an ntfy topic on a server you choose. Never your position
+- **Back up and restore settings** to a JSON file you pick: settings only, without your ntfy topic or where the map was last; restoring shows what will change and asks first
 - **Opens `geo:` links** from other apps
 - **Ctrl / Signal look:** dark and light, following your phone, one violet accent, Space Grotesk and JetBrains Mono
 

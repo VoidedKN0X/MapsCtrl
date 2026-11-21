@@ -310,7 +310,13 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
     /** Imports a GPX file: waypoints become places, tracks and routes become tracks. Returns (places, tracks). */
     suspend fun importGpx(uri: Uri): Pair<Int, Int> {
         val data = withContext(Dispatchers.IO) {
-            context.contentResolver.openInputStream(uri)?.use { Gpx.read(it) }
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                Gpx.read(
+                    input,
+                    trackName = { n -> context.getString(com.vknxworks.mapsctrl.R.string.gpx_track_n, n) },
+                    routeName = { n -> context.getString(com.vknxworks.mapsctrl.R.string.gpx_route_n, n) },
+                )
+            }
         } ?: return 0 to 0
         awaitReady()
         lock.withLock {
