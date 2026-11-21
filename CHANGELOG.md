@@ -23,6 +23,8 @@ Built and checked by CI only: nothing in this section had been run on a phone wh
 
 - **Back up and restore settings.** **Settings > Back up and restore** saves MapsCtrl's settings to a small JSON file in a place you pick, and restores them from one. Restoring first lists the settings that will change and asks. Not in the file: your ntfy topic (anyone who knows it can read the topic, so it's treated like a password), where the map was last, and your saved places, tracks and recent searches (places and tracks go to GPX in Saved). A restore never turns "Hide in screenshots" off, never turns ETA sharing on when this phone has no ntfy topic, only accepts an `https://` ntfy server, and ignores values it doesn't know. A file from a newer MapsCtrl is refused with a message.
 
+- **MapsCtrl in Dutch.** The whole app now follows your phone's language: with the phone set to Dutch, every screen, message and spoken direction is in Dutch (informal "je"), including everything new in this version. There is no language picker in the app; Android chooses. Units, technical names and the app name stay as they are. Spoken directions use your phone's text-to-speech in the same language, as before. The names given to unnamed tracks and routes in a GPX file ("Track 1", "Route 1") now come from the translations too.
+
 ## v0.6.0 (2026-11-21)
 
 Built and checked by CI only: nothing in this release had been run on a phone when it was published. It is the first release built with the new build tools (Android Gradle Plugin 9, stricter code shrinking), so update over your installed version and check that your data and settings are still there.
