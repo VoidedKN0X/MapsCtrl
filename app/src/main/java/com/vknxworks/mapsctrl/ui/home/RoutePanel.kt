@@ -34,6 +34,12 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FiberManualRecord
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Terrain
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import com.vknxworks.mapsctrl.geo.ElevationProfile
+import com.vknxworks.mapsctrl.ui.common.ElevationChart
+import com.vknxworks.mapsctrl.ui.common.height
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.outlined.Download
@@ -256,6 +262,7 @@ fun RoutePanel(
                     }
                     Text(stringResource(R.string.route_arrive_at, fmt.arrival(r.durationSeconds)), style = CtrlType.Data, color = CtrlColors.Muted)
                     AlternativesRow(plan, settings)
+                    RouteElevation(r, settings)
                     if (r.mode == TravelMode.MOPED) {
                         Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Top) {
                             Icon(Icons.Outlined.Info, null, Modifier.size(16.dp).padding(top = 2.dp), tint = CtrlColors.Muted)
@@ -346,6 +353,28 @@ private fun AlternativesRow(plan: PlanState, settings: AppSettings) {
             Text(stringResource(R.string.route_alternatives_none), style = MaterialTheme.typography.bodySmall, color = CtrlColors.Muted, modifier = Modifier.padding(top = 8.dp))
         }
     }
+}
+
+/** The route's climb and descent; tap to see its elevation profile. Only when the routing data has heights. */
+@Composable
+private fun RouteElevation(route: com.vknxworks.mapsctrl.routing.Route, settings: AppSettings) {
+    val fmt = rememberFmt()
+    val profile = remember(route) { ElevationProfile.of(route.points, route.elevations) } ?: return
+    var open by remember(route) { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().padding(top = 6.dp).clip(CtrlShapes.Control).clickable { open = !open }.padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Terrain, null, Modifier.size(18.dp), tint = CtrlColors.AccentText)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            stringResource(R.string.elevation_row, fmt.height(profile.ascent, settings.units), fmt.height(profile.descent, settings.units)),
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(if (open) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, stringResource(if (open) R.string.elevation_hide else R.string.elevation_show), Modifier.size(20.dp), tint = CtrlColors.Muted)
+    }
+    if (open) ElevationChart(profile, settings.units, Modifier.fillMaxWidth().padding(top = 4.dp))
 }
 
 /** What routes avoid, for the travel mode that's picked (only what its routing profile can do). */

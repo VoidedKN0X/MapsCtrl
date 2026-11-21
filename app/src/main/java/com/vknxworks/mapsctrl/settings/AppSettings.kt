@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.vknxworks.mapsctrl.R
@@ -62,6 +63,12 @@ data class AppSettings(
     val avoidMotorways: Boolean = false,
     val avoidUnpaved: Boolean = false,
     val avoidFerries: Boolean = false,
+    /** Warn while navigating when you go faster than the limit (on a moped: never above 25 km/h). */
+    val overSpeedAlert: Boolean = false,
+    /** How far above the limit (km/h) before the warning. */
+    val overSpeedMargin: Int = 5,
+    /** Keep the places you picked in search, for "Recent" on the search screen. */
+    val keepRecentSearches: Boolean = true,
 ) {
     val avoid: Set<Avoid>
         get() = buildSet {
@@ -102,6 +109,9 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         val avoidMotorways = booleanPreferencesKey("avoid_motorways")
         val avoidUnpaved = booleanPreferencesKey("avoid_unpaved")
         val avoidFerries = booleanPreferencesKey("avoid_ferries")
+        val overSpeedAlert = booleanPreferencesKey("over_speed_alert")
+        val overSpeedMargin = intPreferencesKey("over_speed_margin")
+        val keepRecentSearches = booleanPreferencesKey("keep_recent_searches")
     }
 
     private val prefs: Flow<Preferences> = context.appDataStore.data.catch { e ->
@@ -136,6 +146,9 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         avoidMotorways = this[K.avoidMotorways] ?: false,
         avoidUnpaved = this[K.avoidUnpaved] ?: false,
         avoidFerries = this[K.avoidFerries] ?: false,
+        overSpeedAlert = this[K.overSpeedAlert] ?: false,
+        overSpeedMargin = (this[K.overSpeedMargin] ?: 5).coerceIn(0, 20),
+        keepRecentSearches = this[K.keepRecentSearches] ?: true,
     )
 
     /** Saves a change. If the phone's storage fails, the change is dropped instead of closing the app. */
@@ -164,6 +177,9 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
                 p[K.avoidMotorways] = s.avoidMotorways
                 p[K.avoidUnpaved] = s.avoidUnpaved
                 p[K.avoidFerries] = s.avoidFerries
+                p[K.overSpeedAlert] = s.overSpeedAlert
+                p[K.overSpeedMargin] = s.overSpeedMargin
+                p[K.keepRecentSearches] = s.keepRecentSearches
             }
         } catch (_: IOException) {
         }

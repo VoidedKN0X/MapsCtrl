@@ -27,6 +27,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Work
+import androidx.compose.material3.TextButton
+import com.vknxworks.mapsctrl.saved.SavedPlace
+import com.vknxworks.mapsctrl.ui.components.ConfirmDialog
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.SearchOff
@@ -69,6 +75,8 @@ import com.vknxworks.mapsctrl.ui.theme.CtrlColors
 import com.vknxworks.mapsctrl.ui.theme.CtrlShapes
 import com.vknxworks.mapsctrl.ui.theme.CtrlType
 import com.vknxworks.mapsctrl.ui.theme.Gutter
+import com.vknxworks.mapsctrl.search.OpeningHours
+import java.time.LocalDateTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -79,24 +87,42 @@ fun SearchScreen(
     near: LatLon,
     onPick: (Place) -> Unit,
     onShowAll: () -> Unit,
+    /** Route straight to a place (the Home and Work shortcuts). */
+    onRoute: (Place) -> Unit,
     title: String? = null,
 ) {
     val c = LocalContext.current.container
     val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     var busy by remember { mutableStateOf(false) }
+    /** Everything found; [HomeState.results] is this, or only what's open now while that filter is on. */
+    var all by remember { mutableStateOf(state.results) }
+    var openNow by remember { mutableStateOf(false) }
+    LaunchedEffect(all, openNow) {
+        state.results = if (openNow) {
+            val now = LocalDateTime.now()
+            all.filter { OpeningHours.isOpen(it.place.tags["opening_hours"], now) == true }
+        } else all
+    }
     val hasData by produceState(true) { value = c.search.hasSearchData() }
     val savedPlaces by c.saved.places.collectAsStateWithLifecycle()
+    val recent by c.saved.recent.collectAsStateWithLifecycle()
+    val settings by c.settings.settings.collectAsStateWithLifecycle()
+    // Remembered in the recent list (encrypted with your saved places) when that's on in Settings.
+    val pick: (Place) -> Unit = { place ->
+        if (settings.keepRecentSearches && place.savedId == null) scope.launch { c.saved.addRecent(place) }
+        onPick(place)
+    }
 
     LaunchedEffect(Unit) { focus.requestFocus() }
     LaunchedEffect(state.query) {
         val q = state.query
-        if (q.isBlank()) { state.results = emptyList(); return@LaunchedEffect }
+        if (q.isBlank()) { all = emptyList(); return@LaunchedEffect }
         delay(250)
         busy = true
         val saved = savedPlaces.filter { it.name.contains(q.trim(), ignoreCase = true) }
             .map { SearchResult(it.toPlace(), Geo.distance(near, it.point)) }
-        state.results = saved + c.search.search(q, near)
+        all = saved + c.search.search(q, near)
         busy = false
     }
 
@@ -113,7 +139,7 @@ fun SearchScreen(
                     { Icon(Icons.Outlined.Close, stringResource(R.string.clear), Modifier.clickable { state.query = "" }.padding(8.dp)) }
                 } else null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { state.results.firstOrNull()?.let { onPick(it.place) } }),
+                keyboardActions = KeyboardActions(onSearch = { state.results.firstOrNull()?.let { pick(it.place) } }),
                 modifier = Modifier.weight(1f).focusRequester(focus),
             )
         }
@@ -122,13 +148,14 @@ fun SearchScreen(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Gutter),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            Chip(stringResource(R.string.open_now), selected = openNow) { openNow = !openNow }
             for (cat in QuickCategory.entries) {
                 Chip(stringResource(categoryLabel(cat))) {
                     scope.launch {
                         busy = true
                         state.query = ""
                         delay(300) // after the query effect has cleared the list
-                        state.results = c.search.category(cat, near)
+                        all = c.search.category(cat, near)
                         busy = false
                     }
                 }
@@ -136,6 +163,15 @@ fun SearchScreen(
         }
         Spacer(Modifier.size(8.dp))
         when {
+            state.query.isBlank() && state.results.isEmpty() && !busy && (hasData || recent.isNotEmpty() || savedPlaces.any { it.role != null }) -> StartList(
+                home = savedPlaces.firstOrNull { it.role == SavedPlace.ROLE_HOME },
+                work = savedPlaces.firstOrNull { it.role == SavedPlace.ROLE_WORK },
+                recent = if (settings.keepRecentSearches) recent else emptyList(),
+                near = near,
+                onRoute = onRoute,
+                onPick = onPick,
+                onClearRecent = { scope.launch { c.saved.clearRecent() } },
+            )
             busy && state.results.isEmpty() -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = CtrlColors.AccentText)
             }
@@ -144,12 +180,17 @@ fun SearchScreen(
                 stringResource(R.string.search_no_data_title),
                 stringResource(R.string.search_no_data_body),
             )
+            openNow && state.results.isEmpty() && all.isNotEmpty() && !busy -> MessageView(
+                Icons.Outlined.SearchOff,
+                stringResource(R.string.open_now_none_title),
+                stringResource(R.string.open_now_none_body, all.size),
+            )
             state.results.isEmpty() && state.query.isNotBlank() && !busy -> MessageView(
                 Icons.Outlined.SearchOff,
                 stringResource(R.string.search_nothing_title),
                 stringResource(R.string.search_nothing_body),
             )
-            else -> ResultList(state.results, onPick, onShowAll)
+            else -> ResultList(state.results, pick, onShowAll)
         }
     }
 }
@@ -157,6 +198,7 @@ fun SearchScreen(
 @Composable
 private fun ResultList(results: List<SearchResult>, onPick: (Place) -> Unit, onShowAll: () -> Unit) {
     val fmt = rememberFmt()
+    val now = remember(results) { LocalDateTime.now() }
     val c = LocalContext.current.container
     val settings by c.settings.settings.collectAsStateWithLifecycle()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -186,7 +228,12 @@ private fun ResultList(results: List<SearchResult>, onPick: (Place) -> Unit, onS
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(r.place.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    val sub = listOfNotNull(r.place.category, r.place.address()).joinToString(" · ")
+                    val status = when (OpeningHours.isOpen(r.place.tags["opening_hours"], now)) {
+                        true -> stringResource(R.string.open_now_short)
+                        false -> stringResource(R.string.closed_now_short)
+                        null -> null
+                    }
+                    val sub = listOfNotNull(status, r.place.category, r.place.address()).joinToString(" · ")
                     if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = CtrlColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 r.distance?.let {
@@ -198,16 +245,97 @@ private fun ResultList(results: List<SearchResult>, onPick: (Place) -> Unit, onS
     }
 }
 
+/** With nothing typed yet: the Home and Work shortcuts and your recent searches. */
 @Composable
-private fun Chip(text: String, onClick: () -> Unit) {
+private fun StartList(
+    home: SavedPlace?,
+    work: SavedPlace?,
+    recent: List<Place>,
+    near: LatLon,
+    onRoute: (Place) -> Unit,
+    onPick: (Place) -> Unit,
+    onClearRecent: () -> Unit,
+) {
+    val fmt = rememberFmt()
+    val c = LocalContext.current.container
+    val settings by c.settings.settings.collectAsStateWithLifecycle()
+    var clearing by remember { mutableStateOf(false) }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item(key = "shortcuts") {
+            Row(Modifier.fillMaxWidth().padding(horizontal = Gutter, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Shortcut(Icons.Outlined.Home, stringResource(R.string.home_place), home, Modifier.weight(1f), onRoute)
+                Shortcut(Icons.Outlined.Work, stringResource(R.string.work_place), work, Modifier.weight(1f), onRoute)
+            }
+            if (home == null || work == null) {
+                Text(stringResource(R.string.home_work_hint), style = MaterialTheme.typography.bodySmall, color = CtrlColors.Muted, modifier = Modifier.padding(horizontal = Gutter, vertical = 4.dp))
+            }
+        }
+        if (recent.isNotEmpty()) {
+            item(key = "recent-title") {
+                Row(Modifier.fillMaxWidth().padding(start = Gutter, end = 8.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.recent_searches).uppercase(), style = CtrlType.Label, color = CtrlColors.Muted, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { clearing = true }) { Text(stringResource(R.string.recent_clear)) }
+                }
+            }
+            items(recent, key = { "r" + it.name + it.point }) { p ->
+                Row(
+                    Modifier.fillMaxWidth().topDivider().clickable { onPick(p) }.heightIn(min = 60.dp).padding(horizontal = Gutter, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.History, null, Modifier.size(22.dp), tint = CtrlColors.Muted)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(p.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        val sub = listOfNotNull(p.category, p.address()).joinToString(" · ")
+                        if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = CtrlColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Text(fmt.distance(Geo.distance(near, p.point), settings.units), style = CtrlType.Data, color = CtrlColors.Muted)
+                }
+            }
+        }
+    }
+    if (clearing) {
+        ConfirmDialog(
+            stringResource(R.string.recent_clear_title),
+            stringResource(R.string.recent_clear_body),
+            stringResource(R.string.recent_clear),
+            onDismiss = { clearing = false },
+        ) { clearing = false; onClearRecent() }
+    }
+}
+
+@Composable
+private fun Shortcut(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, place: SavedPlace?, modifier: Modifier, onRoute: (Place) -> Unit) {
+    Row(
+        modifier
+            .clip(CtrlShapes.Control)
+            .background(CtrlColors.Surface)
+            .border(1.dp, CtrlColors.ControlOutline, CtrlShapes.Control)
+            .then(if (place != null) Modifier.clickable { onRoute(place.toPlace()) } else Modifier)
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, Modifier.size(22.dp), tint = if (place != null) CtrlColors.AccentText else CtrlColors.Muted)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            Text(place?.name ?: stringResource(R.string.home_work_not_set), style = MaterialTheme.typography.bodySmall, color = CtrlColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun Chip(text: String, selected: Boolean = false, onClick: () -> Unit) {
     Text(
         text,
         style = MaterialTheme.typography.labelLarge,
-        color = CtrlColors.Text,
+        color = if (selected) CtrlColors.OnAccent else CtrlColors.Text,
         modifier = Modifier
             .clip(CtrlShapes.Chip)
-            .background(CtrlColors.Surface)
-            .border(1.dp, CtrlColors.ControlOutline, CtrlShapes.Chip)
+            .background(if (selected) CtrlColors.Accent else CtrlColors.Surface)
+            .border(1.dp, if (selected) CtrlColors.Accent else CtrlColors.ControlOutline, CtrlShapes.Chip)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
     )

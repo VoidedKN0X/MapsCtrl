@@ -21,6 +21,8 @@ import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.DirectionsTransit
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.NotificationImportant
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.outlined.Send
@@ -90,6 +92,14 @@ fun SettingsScreen() {
                 })
                 GroupSwitch(stringResource(R.string.speed_limit), stringResource(R.string.speed_limit_subtitle), s.speedLimit, Icons.Outlined.Speed) { v -> set { it.copy(speedLimit = v) } }
                 GroupSwitch(stringResource(R.string.speed_cameras), stringResource(R.string.speed_cameras_subtitle), s.speedCameras, Icons.Outlined.CameraAlt) { v -> set { it.copy(speedCameras = v) } }
+                GroupSwitch(stringResource(R.string.over_speed), stringResource(R.string.over_speed_subtitle), s.overSpeedAlert, Icons.Outlined.NotificationImportant) { v -> set { it.copy(overSpeedAlert = v) } }
+                if (s.overSpeedAlert) {
+                    GroupChoice(
+                        stringResource(R.string.over_speed_margin),
+                        listOf(0, 3, 5, 10).map { it to stringResource(R.string.over_speed_margin_value, it) },
+                        s.overSpeedMargin,
+                    ) { v -> set { it.copy(overSpeedMargin = v) } }
+                }
                 GroupSwitch(stringResource(R.string.keep_screen_on), stringResource(R.string.keep_screen_on_subtitle), s.keepScreenOn, Icons.Outlined.LightMode) { v -> set { it.copy(keepScreenOn = v) } }
             }
 
@@ -104,6 +114,11 @@ fun SettingsScreen() {
                     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 })
                 GroupSwitch(stringResource(R.string.hide_screenshots), stringResource(R.string.hide_screenshots_subtitle), s.hideScreenshots, Icons.Outlined.Screenshot) { v -> set { it.copy(hideScreenshots = v) } }
+                GroupSwitch(stringResource(R.string.keep_recent), stringResource(R.string.keep_recent_subtitle), s.keepRecentSearches, Icons.Outlined.History) { v ->
+                    set { it.copy(keepRecentSearches = v) }
+                    // Turning it off also forgets the list.
+                    if (!v) scope.launch { c.saved.clearRecent() }
+                }
             }
         }
     }

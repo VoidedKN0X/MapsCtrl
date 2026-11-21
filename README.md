@@ -20,6 +20,8 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 - **Offline vector maps** of any country or region from [download.mapsforge.org](https://download.mapsforge.org), drawn on the phone in MapsCtrl's own style: neutral greys, muted water and green, and violet only for your route, the selected place and your position. Day and night colours follow your phone's dark theme
 - **Downloads:** browse continents, countries and regions, download with progress, check for updates, update and delete, see how much space maps and routing data take, or import a Mapsforge `.map` file you already have
 - **Offline search** by name, address, category and coordinates (decimal, degrees-minutes-seconds or `geo:` links), with quick buttons for food, fuel, charging, parking, groceries, hotels, pharmacies, cash, toilets and transport
+- **Open now:** a filter on the search screen that keeps only places open right now by their OpenStreetMap opening hours, read offline. Results and the place sheet say "Open now" or "Closed now" where the hours can be read (holidays, months and dates can't, and such places are left out by the filter)
+- **Home and Work, and recent searches:** set a place as Home or Work from its sheet for a one-tap route from the search screen; the places you pick in search are listed under Recent (stored encrypted with your saved places; clear them, or switch this off, in Settings)
 - **Place sheet** with the category, address, opening hours, phone, website and other OpenStreetMap details, and **Route to**, **Save** and **Share**
 - **Routes by car, moped, bike and on foot** with [BRouter](https://github.com/abrensch/brouter), from your position, a place or coordinates you type, or a point you tap on the map. Routing data is downloaded per area, only after MapsCtrl has shown you the size and you agreed
 - **Moped routes** for a Belgian class A moped (25 km/h): cycle paths where there are any (wegcode art. 9.1.2), never motorways or motor roads (art. 21.1 and 22.1), and no roads or paths closed to mopeds. It is MapsCtrl's own routing profile (`moped.brf`) and can only go by the OpenStreetMap data, so check it against the local rules and the road signs
@@ -30,7 +32,10 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 - **Street names in directions:** "Turn left onto Rue Grimaldi", "Take the 2nd exit onto Avenue de la Costa", on the next-turn card and in the voice. The names come from the maps on your phone, so this works offline too
 - **Public transport** with [Transitous](https://transitous.org) (online, only when you pick **Transit**): leave now, depart at or arrive by a time, journeys with walks, lines in their own colours, platforms, changes and delays, and the journey drawn on the map
 - **Hillshading:** shaded hills and mountains, on or off under **Map layers**. The elevation data is downloaded per map in **Downloads**, after MapsCtrl has shown you its size, and can be deleted again
-- **Saved places and tracks**, **track recording** (also with the screen off) and **GPX import and export**
+- **Saved places and tracks**, **track recording** (also with the screen off) and **GPX import and export** (heights included)
+- **Elevation profiles:** the climb, descent and profile of every route (from the routing data) and of tracks whose GPX file has heights
+- **Follow a GPX track:** follow an imported or recorded track like a route, with the distance and time left, the distance ridden, moving time, average and top speed, how far along you are and the climb still ahead. No turn directions or rerouting; leaving the track is said once
+- **Over-speed alert** (off by default): a beep and a spoken warning while navigating when you go faster than the road's limit plus a margin you choose. On a moped the limit is never more than 25 km/h
 - **Share your ETA with ntfy** (off by default): while navigating, your arrival time and the distance left go to an ntfy topic on a server you choose. Never your position
 - **Opens `geo:` links** from other apps
 - **Ctrl / Signal look:** dark and light, following your phone, one violet accent, Space Grotesk and JetBrains Mono
@@ -64,7 +69,8 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 - **Public transport:** in route planning, pick **Transit**. **Change** sets a departure or arrival time; tap a journey to see its walks, lines, platforms and stops.
 - **Navigate:** **Start**. Tap the speaker to mute, **End** to stop.
 - **Hillshading:** the layers button on the map. Download terrain data for your maps under **Downloads > Terrain data**.
-- **Settings** (profile picture, top right): units, map colours, voice, speed limit and camera warnings, public transport, ETA sharing.
+- **Follow a track:** tab **Saved**, tap a track, pick how you travel and **Follow**. The same sheet shows its elevation profile.
+- **Settings** (profile picture, top right): units, map colours, voice, speed limit and camera warnings, over-speed alert, public transport, ETA sharing, recent searches.
 
 ## Is it safe to install?
 

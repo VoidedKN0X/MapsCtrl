@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.RampLeft
 import androidx.compose.material.icons.filled.RampRight
 import androidx.compose.material.icons.filled.RoundaboutLeft
 import androidx.compose.material.icons.filled.RoundaboutRight
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Straight
 import androidx.compose.material.icons.filled.TurnLeft
 import androidx.compose.material.icons.filled.TurnRight
@@ -67,6 +68,7 @@ import com.vknxworks.mapsctrl.routing.Instructions
 import com.vknxworks.mapsctrl.routing.SpeedLimit
 import com.vknxworks.mapsctrl.routing.TurnKind
 import com.vknxworks.mapsctrl.settings.AppSettings
+import com.vknxworks.mapsctrl.ui.common.height
 import com.vknxworks.mapsctrl.ui.common.rememberFmt
 import com.vknxworks.mapsctrl.ui.components.CtrlCard
 import com.vknxworks.mapsctrl.ui.components.CtrlHeroCard
@@ -98,7 +100,9 @@ fun NavigationOverlay(
             val label = when {
                 state.rerouting -> stringResource(R.string.nav_rerouting)
                 state.waitingForLocation -> stringResource(R.string.nav_waiting)
+                state.follow && p?.offRoute == true -> stringResource(R.string.follow_off_track)
                 p?.offRoute == true -> stringResource(R.string.nav_off_route)
+                state.follow -> stringResource(R.string.follow_label)
                 else -> stringResource(R.string.nav_next)
             }
             CtrlHeroCard(label = label, meta = if (state.demo) stringResource(R.string.nav_demo) else null) {
@@ -116,7 +120,7 @@ fun NavigationOverlay(
                             maxLines = 1,
                         )
                         Text(
-                            if (hint != null) Instructions.title(fmt.words, hint) else state.destination.name,
+                            if (state.follow) state.destination.name else if (hint != null) Instructions.title(fmt.words, hint) else state.destination.name,
                             style = MaterialTheme.typography.titleLarge,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -130,6 +134,16 @@ fun NavigationOverlay(
                         Spacer(Modifier.width(8.dp))
                         Icon(turnIcon(then.kind), null, Modifier.size(20.dp))
                     }
+                }
+            }
+            if (state.overSpeed) {
+                Row(
+                    Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(CtrlColors.Error).padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.Speed, null, Modifier.size(20.dp), tint = CtrlColors.OnError)
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(R.string.nav_over_speed), style = MaterialTheme.typography.titleSmall, color = CtrlColors.OnError)
                 }
             }
             p?.cameraAhead?.takeIf { settings.speedCameras }?.let { d ->
@@ -177,6 +191,28 @@ fun NavigationOverlay(
                     Readout(stringResource(R.string.nav_arrival), p?.let { fmt.arrival(it.timeLeftSeconds) } ?: "–", Modifier.weight(1f))
                     Readout(stringResource(R.string.nav_time_left), p?.let { fmt.duration(it.timeLeftSeconds) } ?: "–", Modifier.weight(1f))
                     Readout(stringResource(R.string.nav_distance_left), p?.let { fmt.distance(it.distanceLeft, settings.units) } ?: "–", Modifier.weight(1f))
+                }
+                state.stops.firstOrNull()?.let { stop ->
+                    Text(stringResource(R.string.nav_next_stop, stop.name), style = MaterialTheme.typography.bodySmall, color = CtrlColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                }
+                if (state.follow) {
+                    val st = state.stats
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Readout(stringResource(R.string.follow_done), st?.let { fmt.distance(it.distance, settings.units) } ?: "–", Modifier.weight(1f))
+                        Readout(stringResource(R.string.follow_moving), st?.let { fmt.duration(it.movingMs / 1000.0) } ?: "–", Modifier.weight(1f))
+                        Readout(stringResource(R.string.follow_average), st?.takeIf { it.movingMs > 0 }?.let { fmt.speed(it.movingAverage.toFloat(), settings.units) + " " + fmt.speedUnit(settings.units) } ?: "–", Modifier.weight(1f))
+                    }
+                    val elevation = state.elevation
+                    if (elevation != null && p != null) {
+                        val along = (state.route.cumulative.lastOrNull() ?: 0.0) - p.distanceLeft
+                        Spacer(Modifier.height(10.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Readout(stringResource(R.string.follow_climb_left), fmt.height(elevation.ascentAfter(along), settings.units), Modifier.weight(1f))
+                            Readout(stringResource(R.string.follow_progress), "${((along / (state.route.cumulative.lastOrNull() ?: 1.0).coerceAtLeast(1.0)) * 100).toInt().coerceIn(0, 100)} %", Modifier.weight(1f))
+                            Readout(stringResource(R.string.follow_top_speed), st?.let { fmt.speed(it.maxSpeed, settings.units) + " " + fmt.speedUnit(settings.units) } ?: "–", Modifier.weight(1f))
+                        }
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

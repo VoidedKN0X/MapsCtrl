@@ -66,6 +66,12 @@ import com.vknxworks.mapsctrl.ui.theme.CtrlColors
 import com.vknxworks.mapsctrl.ui.theme.CtrlType
 import com.vknxworks.mapsctrl.ui.theme.Gutter
 import kotlinx.coroutines.launch
+import com.vknxworks.mapsctrl.search.OpeningHours
+import java.time.LocalDateTime
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Work
+import androidx.compose.material3.TextButton
+import com.vknxworks.mapsctrl.saved.SavedPlace
 
 /** The place sheet: name, category, address, details from the OSM tags, and Route to / Save / Share. */
 @Composable
@@ -121,6 +127,24 @@ fun PlaceSheet(place: Place, onClose: () -> Unit, onRoute: () -> Unit) {
             }
             CtrlSquareButton(Icons.Outlined.Share, stringResource(R.string.share), onClick = { share(context, place) }, size = 56.dp)
         }
+        // Home and Work: the shortcuts on the search screen.
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            for ((role, label, isLabel) in listOf(
+                Triple(SavedPlace.ROLE_HOME, R.string.set_as_home, R.string.is_home),
+                Triple(SavedPlace.ROLE_WORK, R.string.set_as_work, R.string.is_work),
+            )) {
+                val has = savedEntry?.role == role
+                TextButton(onClick = {
+                    scope.launch {
+                        if (has) c.saved.clearRole(role) else c.saved.setRole(place, role)
+                    }
+                }) {
+                    Icon(if (role == SavedPlace.ROLE_HOME) Icons.Outlined.Home else Icons.Outlined.Work, null, Modifier.size(18.dp), tint = if (has) CtrlColors.AccentText else CtrlColors.Muted)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(if (has) isLabel else label), color = if (has) CtrlColors.AccentText else CtrlColors.Text)
+                }
+            }
+        }
 
         val details = details(context, place)
         Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -145,7 +169,15 @@ private data class Detail(val icon: ImageVector, val text: String, val action: (
 private fun details(context: Context, p: Place): List<Detail> {
     val t = p.tags
     val out = mutableListOf<Detail>()
-    t["opening_hours"]?.let { out += Detail(Icons.Outlined.AccessTime, it.replace(";", "\n").replace("; ", "\n")) }
+    t["opening_hours"]?.let { oh ->
+        val hours = oh.replace("; ", "\n").replace(";", "\n")
+        val status = when (OpeningHours.isOpen(oh, LocalDateTime.now())) {
+            true -> context.getString(R.string.open_now_short) + "\n"
+            false -> context.getString(R.string.closed_now_short) + "\n"
+            null -> ""
+        }
+        out += Detail(Icons.Outlined.AccessTime, status + hours)
+    }
     (t["phone"] ?: t["contact:phone"])?.let { ph -> out += Detail(Icons.Outlined.Phone, ph) { ctx -> open(ctx, Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + ph.split(';').first().trim()))) } }
     (t["website"] ?: t["contact:website"] ?: t["url"])?.let { w ->
         val url = if (w.startsWith("http")) w else "https://$w"

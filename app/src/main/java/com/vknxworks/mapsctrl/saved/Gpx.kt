@@ -10,7 +10,13 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 data class GpxWaypoint(val point: LatLon, val name: String, val description: String? = null, val time: Instant? = null)
 
-data class GpxTrack(val name: String, val segments: List<List<LatLon>>, val times: List<List<Instant?>> = emptyList())
+data class GpxTrack(
+    val name: String,
+    val segments: List<List<LatLon>>,
+    val times: List<List<Instant?>> = emptyList(),
+    /** Height per point in metres (`<ele>`), same shape as [segments], or empty when the file has none. */
+    val elevations: List<List<Float?>> = emptyList(),
+)
 
 data class GpxData(val waypoints: List<GpxWaypoint>, val tracks: List<GpxTrack>)
 
@@ -35,14 +41,18 @@ object Gpx {
         }
         val tracks = mutableListOf<GpxTrack>()
         children(root, "trk").forEachIndexed { i, trk ->
-            val segs = children(trk, "trkseg").map { seg -> children(seg, "trkpt").mapNotNull { point(it) to time(it) } }
+            val segs = children(trk, "trkseg").map { seg -> children(seg, "trkpt").map { Triple(point(it), time(it), ele(it)) } }
             val points = segs.map { s -> s.mapNotNull { it.first } }.filter { it.isNotEmpty() }
             val times = segs.map { s -> s.filter { it.first != null }.map { it.second } }.filter { it.isNotEmpty() }
-            if (points.isNotEmpty()) tracks += GpxTrack(text(trk, "name") ?: "Track ${i + 1}", points, times)
+            val eles = segs.map { s -> s.filter { it.first != null }.map { it.third } }.filter { it.isNotEmpty() }
+            if (points.isNotEmpty()) tracks += GpxTrack(text(trk, "name") ?: "Track ${i + 1}", points, times, eles.takeIf { e -> e.any { s -> s.any { it != null } } }.orEmpty())
         }
         children(root, "rte").forEachIndexed { i, rte ->
-            val pts = children(rte, "rtept").mapNotNull { point(it) }
-            if (pts.isNotEmpty()) tracks += GpxTrack(text(rte, "name") ?: "Route ${i + 1}", listOf(pts))
+            val pts = children(rte, "rtept").mapNotNull { e -> point(e)?.let { it to ele(e) } }
+            if (pts.isNotEmpty()) {
+                val eles = pts.map { it.second }
+                tracks += GpxTrack(text(rte, "name") ?: "Route ${i + 1}", listOf(pts.map { it.first }), elevations = if (eles.any { it != null }) listOf(eles) else emptyList())
+            }
         }
         return GpxData(waypoints, tracks)
     }
@@ -63,8 +73,10 @@ object Gpx {
                 out.write("    <trkseg>\n")
                 seg.forEachIndexed { pi, p ->
                     val time = t.times.getOrNull(si)?.getOrNull(pi)
-                    if (time != null) {
-                        out.write("      <trkpt lat=\"${coord(p.lat)}\" lon=\"${coord(p.lon)}\"><time>$time</time></trkpt>\n")
+                    val ele = t.elevations.getOrNull(si)?.getOrNull(pi)
+                    val inner = (if (ele != null) "<ele>${height(ele)}</ele>" else "") + (if (time != null) "<time>$time</time>" else "")
+                    if (inner.isNotEmpty()) {
+                        out.write("      <trkpt lat=\"${coord(p.lat)}\" lon=\"${coord(p.lon)}\">$inner</trkpt>\n")
                     } else {
                         out.write("      <trkpt lat=\"${coord(p.lat)}\" lon=\"${coord(p.lon)}\"/>\n")
                     }
@@ -76,6 +88,10 @@ object Gpx {
         out.write("</gpx>\n")
         out.flush()
     }
+
+    private fun height(v: Float) = String.format(java.util.Locale.ROOT, "%.1f", v)
+
+    private fun ele(e: Element): Float? = text(e, "ele")?.toFloatOrNull()?.takeIf { it.isFinite() && it > -500f && it < 9000f }
 
     private fun coord(v: Double) = String.format(java.util.Locale.ROOT, "%.7f", v).trimEnd('0').trimEnd('.')
 

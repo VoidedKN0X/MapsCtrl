@@ -4,9 +4,11 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.ToneGenerator
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.vknxworks.mapsctrl.R
+import com.vknxworks.mapsctrl.geo.ElevationProfile
 import com.vknxworks.mapsctrl.geo.Geo
 import com.vknxworks.mapsctrl.geo.LatLon
 import com.vknxworks.mapsctrl.location.Fix
@@ -16,6 +18,7 @@ import com.vknxworks.mapsctrl.routing.Route
 import com.vknxworks.mapsctrl.routing.TravelMode
 import com.vknxworks.mapsctrl.routing.TurnKind
 import com.vknxworks.mapsctrl.search.Place
+import com.vknxworks.mapsctrl.saved.SavedTrack
 import com.vknxworks.mapsctrl.search.SearchRepository
 import com.vknxworks.mapsctrl.settings.SettingsRepository
 import com.vknxworks.mapsctrl.share.Ntfy
@@ -44,6 +47,13 @@ data class NavState(
     val demo: Boolean = false,
     /** The stops still ahead, in order (a stop is dropped from the list when you reach it). */
     val stops: List<Place> = emptyList(),
+    /** Following a saved track: no turn directions and no rerouting, statistics instead. */
+    val follow: Boolean = false,
+    val stats: TripStats? = null,
+    /** The track's (or route's) elevation profile, for the climb still ahead. */
+    val elevation: ElevationProfile? = null,
+    /** You're going faster than allowed (only with the over-speed alert on). */
+    val overSpeed: Boolean = false,
 )
 
 /**
@@ -70,6 +80,10 @@ class NavigationSession(
     private val warnedCameras = HashSet<Long>()
     /** Where each stop still ahead is along the current route (same order as [NavState.stops]). */
     private var stopAlongs: List<Double> = emptyList()
+    private var overSpeed: OverSpeed? = null
+    private var overSpeedMargin = -1
+    /** While following a track: you're off it (said once each time you leave it). */
+    private var offTrack = false
     private val words = ResourceWords(context)
 
     private var tts: TextToSpeech? = null
@@ -84,12 +98,24 @@ class NavigationSession(
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .build()
 
-    fun start(route: Route, destination: Place, demo: Boolean = false, stops: List<Place> = emptyList()) {
+    fun start(
+        route: Route,
+        destination: Place,
+        demo: Boolean = false,
+        stops: List<Place> = emptyList(),
+        follow: Boolean = false,
+        elevation: ElevationProfile? = ElevationProfile.of(route.points, route.elevations),
+    ) {
         end(releaseVoice = false)
         tracker = NavigationTracker(route)
         warnedCameras.clear()
         stopAlongs = Stops.alongs(route, stops.map { it.point })
-        _state.value = NavState(route, destination, demo = demo, stops = stops)
+        overSpeed = null
+        offTrack = false
+        _state.value = NavState(
+            route, destination, demo = demo, stops = stops, follow = follow,
+            stats = TripStats(System.currentTimeMillis()), elevation = elevation,
+        )
         initTts()
         location.start("nav")
         loadCameras(route)
@@ -102,6 +128,37 @@ class NavigationSession(
     }
 
     fun stop() = end(releaseVoice = true)
+
+    /**
+     * Follows a saved track (an imported GPX track or one you recorded): the track is shown like a route, with
+     * the distance and estimated time left, your trip statistics and the climb ahead. There are no turn
+     * directions and no rerouting; leaving the track is said once and shown until you're back on it.
+     */
+    fun followTrack(track: SavedTrack, mode: TravelMode, demo: Boolean = false) {
+        val points = track.segments.flatten()
+        if (points.size < 2) return
+        val heights = track.flatElevations()
+        val length = track.lengthMeters
+        val route = Route(
+            mode = mode,
+            points = points,
+            times = emptyList(),
+            distanceMeters = length,
+            durationSeconds = length / followSpeed(mode),
+            hints = emptyList(),
+            sections = emptyList(),
+            elevations = if (heights.isNotEmpty() && heights.all { it != null }) heights.map { it!! } else emptyList(),
+        )
+        start(route, Place(track.name, points.last()), demo = demo, follow = true, elevation = ElevationProfile.of(points, heights))
+    }
+
+    /** Average speeds for the time left on a track, in m/s: 50, 25, 16 and 4.5 km/h. */
+    private fun followSpeed(mode: TravelMode): Double = when (mode) {
+        TravelMode.CAR -> 13.9
+        TravelMode.MOPED -> 6.9
+        TravelMode.BIKE -> 4.4
+        TravelMode.FOOT -> 1.25
+    }
 
     /** Ends navigation. [releaseVoice]: also let go of the text-to-speech engine (not when a new trip starts right away). */
     private fun end(releaseVoice: Boolean) {
@@ -145,12 +202,18 @@ class NavigationSession(
     private fun onFix(fix: Fix) {
         val t = tracker ?: return
         val p = t.update(fix.point, fix.accuracy)
-        val s = _state.value ?: return
-        _state.value = s.copy(progress = p, fix = fix, waitingForLocation = false)
+        val before = _state.value ?: return
         val cfg = settings.settings.value
+        val over = checkOverSpeed(fix, p, before, cfg)
+        val s = before.copy(
+            progress = p, fix = fix, waitingForLocation = false,
+            stats = before.stats?.add(fix.point, fix.accuracy, fix.speed, fix.time),
+            overSpeed = over,
+        )
+        _state.value = s
 
         if (p.arrived) {
-            if (s.progress?.arrived != true) {
+            if (before.progress?.arrived != true) {
                 speak(words.action(TurnKind.ARRIVE, 0).replaceFirstChar { it.uppercase() })
                 sendNtfy(arrived = true)
             }
@@ -166,7 +229,11 @@ class NavigationSession(
                 stopAlongs = stopAlongs.filterIndexed { i, _ -> i in ahead }
             }
         }
-        if (p.offRoute && !s.rerouting && System.currentTimeMillis() - lastReroute > 8_000) {
+        if (s.follow) {
+            // A track isn't rerouted: say once that you've left it, and once that you're back.
+            if (p.offRoute && !offTrack) { offTrack = true; speak(context.getString(R.string.voice_off_track)) }
+            if (!p.offRoute && offTrack && p.distanceFromRoute < 20.0) { offTrack = false; speak(context.getString(R.string.voice_back_on_track)) }
+        } else if (p.offRoute && !s.rerouting && System.currentTimeMillis() - lastReroute > 8_000) {
             reroute(fix.point)
             return
         }
@@ -177,6 +244,30 @@ class NavigationSession(
         if (cfg.speedCameras && cam != null) {
             val key = ((p.distanceLeft - cam) / 10).toLong() // the camera's place along the route, in 10 m steps
             if (warnedCameras.add(key)) speak(context.getString(R.string.voice_speed_camera))
+        }
+    }
+
+    /** Whether you're over the limit now, and the warning (a beep, and the voice when it's on) when it's time for one. */
+    private fun checkOverSpeed(fix: Fix, p: Progress, s: NavState, cfg: com.vknxworks.mapsctrl.settings.AppSettings): Boolean {
+        if (!cfg.overSpeedAlert) { overSpeed = null; return false }
+        if (overSpeed == null || overSpeedMargin != cfg.overSpeedMargin) {
+            overSpeed = OverSpeed(cfg.overSpeedMargin)
+            overSpeedMargin = cfg.overSpeedMargin
+        }
+        val o = overSpeed ?: return false
+        val warn = o.update(fix.speed?.let { it * 3.6f }, p.speedLimit?.kmh, s.route.mode == TravelMode.MOPED, fix.time)
+        if (warn && !s.muted) {
+            beep()
+            speak(context.getString(R.string.voice_over_speed))
+        }
+        return o.over
+    }
+
+    private fun beep() {
+        runCatching {
+            val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+            tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 400)
+            scope.launch { delay(600); tone.release() }
         }
     }
 

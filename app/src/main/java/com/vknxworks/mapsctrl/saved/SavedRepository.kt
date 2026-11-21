@@ -31,8 +31,15 @@ data class SavedPlace(
     val tags: Map<String, String> = emptyMap(),
     val category: String? = null,
     val created: Long = System.currentTimeMillis(),
+    /** [ROLE_HOME] or [ROLE_WORK] for the Home and Work shortcuts; at most one place has each. */
+    val role: String? = null,
 ) {
     fun toPlace() = Place(name, point, tags, category, savedId = id)
+
+    companion object {
+        const val ROLE_HOME = "home"
+        const val ROLE_WORK = "work"
+    }
 }
 
 @Serializable
@@ -44,12 +51,23 @@ data class SavedTrack(
     val times: List<List<Long?>> = emptyList(),
     val created: Long = System.currentTimeMillis(),
     val visible: Boolean = true,
+    /** Height per point in metres, when the GPX file had it (same shape as [segments]); empty otherwise. */
+    val elevations: List<List<Float?>> = emptyList(),
 ) {
     val lengthMeters: Double get() = segments.sumOf { s -> s.zipWithNext().sumOf { (a, b) -> Geo.distance(a, b) } }
+
+    /** The heights as one list along [segments] flattened, or empty when not every segment has them. */
+    fun flatElevations(): List<Float?> =
+        if (elevations.size == segments.size && elevations.indices.all { elevations[it].size == segments[it].size }) elevations.flatten() else emptyList()
 }
 
 @Serializable
-private data class SavedFile(val places: List<SavedPlace> = emptyList(), val tracks: List<SavedTrack> = emptyList())
+private data class SavedFile(
+    val places: List<SavedPlace> = emptyList(),
+    val tracks: List<SavedTrack> = emptyList(),
+    /** Places you picked in search, newest first (kept in the same encrypted file). */
+    val recent: List<Place> = emptyList(),
+)
 
 /**
  * Saved places and tracks, in one JSON file in private storage; GPX import and export.
@@ -68,6 +86,9 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
     val places: StateFlow<List<SavedPlace>> = _places
     private val _tracks = MutableStateFlow<List<SavedTrack>>(emptyList())
     val tracks: StateFlow<List<SavedTrack>> = _tracks
+    private val _recent = MutableStateFlow<List<Place>>(emptyList())
+    /** Places you picked in search, newest first. */
+    val recent: StateFlow<List<Place>> = _recent
 
     private val _ready = MutableStateFlow(false)
     /** The saved file has been read (or there is none). Until then [places] and [tracks] are still empty. */
@@ -90,6 +111,7 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
         if (loaded != null) {
             _places.value = loaded.places
             _tracks.value = loaded.tracks
+            _recent.value = loaded.recent
         }
         _unreadable.value = loaded == null
         _ready.value = true
@@ -173,7 +195,7 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
     private suspend fun write() = withContext(Dispatchers.IO) {
         // Never over a file that couldn't be opened: it stays on disk until it opens again or is given up.
         if (_unreadable.value) return@withContext
-        val plain = json.encodeToString(SavedFile.serializer(), SavedFile(_places.value, _tracks.value)).toByteArray(Charsets.UTF_8)
+        val plain = json.encodeToString(SavedFile.serializer(), SavedFile(_places.value, _tracks.value, _recent.value)).toByteArray(Charsets.UTF_8)
         // Encrypted when there's a data key; the ordinary file otherwise, as before.
         val sealed = keys.get(create = true)?.let { SealedFile.sealChecked(it, plain) }
         SealedFile.writeAtomic(file, tmp, sealed ?: plain)
@@ -204,6 +226,7 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
             if (keys.get(create = false) == null) keys.discard(keep = true)
             _places.value = emptyList()
             _tracks.value = emptyList()
+            _recent.value = emptyList()
             _unreadable.value = false
         }
     }
@@ -240,6 +263,38 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
         _places.value = _places.value.filterNot { it.id == id }
     }
 
+    /**
+     * Makes [place] your Home or Work ([role]): it's saved first when it isn't yet, and the place that had the
+     * role before loses it (it stays saved).
+     */
+    suspend fun setRole(place: Place, role: String) {
+        awaitReady()
+        lock.withLock {
+            if (_unreadable.value) return
+            val existing = _places.value.firstOrNull { it.id == place.savedId }
+                ?: _places.value.firstOrNull { it.point == place.point && it.name == place.name }
+            val target = existing ?: SavedPlace(name = place.name, point = place.point, tags = place.tags, category = place.category)
+            _places.value = _places.value.filterNot { it.id == target.id }.map { if (it.role == role) it.copy(role = null) else it } + target.copy(role = role)
+            write()
+        }
+    }
+
+    /** Takes the Home or Work role off a place (the place stays saved). */
+    suspend fun clearRole(role: String) = change {
+        _places.value = _places.value.map { if (it.role == role) it.copy(role = null) else it }
+    }
+
+    /** Puts a place you picked in search at the top of the recent list (at most [MAX_RECENT]). */
+    suspend fun addRecent(place: Place) = change {
+        val p = place.copy(savedId = null)
+        _recent.value = (listOf(p) + _recent.value.filterNot { it.name == p.name && it.point == p.point }).take(MAX_RECENT)
+    }
+
+    /** Forgets every recent search. */
+    suspend fun clearRecent() = change {
+        _recent.value = emptyList()
+    }
+
     suspend fun addTrack(t: SavedTrack) = change {
         _tracks.value = _tracks.value + t
     }
@@ -264,7 +319,7 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
                 SavedPlace(name = w.name, point = w.point, note = w.description.orEmpty(), created = w.time?.toEpochMilli() ?: System.currentTimeMillis())
             }
             _tracks.value = _tracks.value + data.tracks.map { t ->
-                SavedTrack(name = t.name, segments = t.segments, times = t.times.map { s -> s.map { it?.toEpochMilli() } })
+                SavedTrack(name = t.name, segments = t.segments, times = t.times.map { s -> s.map { it?.toEpochMilli() } }, elevations = t.elevations)
             }
             write()
         }
@@ -275,7 +330,7 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
     suspend fun exportGpx(uri: Uri, places: List<SavedPlace> = _places.value, tracks: List<SavedTrack> = _tracks.value) = withContext(Dispatchers.IO) {
         val data = GpxData(
             waypoints = places.map { GpxWaypoint(it.point, it.name, it.note.ifBlank { null }, Instant.ofEpochMilli(it.created)) },
-            tracks = tracks.map { t -> GpxTrack(t.name, t.segments, t.times.map { s -> s.map { ms -> ms?.let { Instant.ofEpochMilli(it) } } }) },
+            tracks = tracks.map { t -> GpxTrack(t.name, t.segments, t.times.map { s -> s.map { ms -> ms?.let { Instant.ofEpochMilli(it) } } }, t.elevations) },
         )
         context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { Gpx.write(it, data, "MapsCtrl") }
     }
@@ -284,5 +339,6 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
         const val FILE = "saved.json"
         const val TMP = "saved.json.tmp"
         const val ASIDE = "saved.json.unreadable"
+        const val MAX_RECENT = 15
     }
 }

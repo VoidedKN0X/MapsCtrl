@@ -440,4 +440,58 @@
     <string name="route_alternatives_computing">Looking for other routes…</string>
     <string name="route_alternatives_none">No other routes found.</string>
     <string name="voice_stop_reached">Stop reached: %1$s</string>
+    <!-- Elevation profiles -->
+    <string name="elevation_up">↑ %1$s</string>
+    <string name="elevation_down">↓ %1$s</string>
+    <string name="elevation_row">Elevation: ↑ %1$s ↓ %2$s</string>
+    <string name="elevation_summary">Elevation profile: %1$s up, %2$s down, lowest %3$s, highest %4$s</string>
+    <string name="elevation_show">Show the elevation profile</string>
+    <string name="elevation_hide">Hide the elevation profile</string>
+    <string name="track_no_elevation">This track has no heights, so there\'s no elevation profile. GPX files with heights (&lt;ele&gt;) show one.</string>
+
+    <!-- Following a track -->
+    <string name="follow_as">Follow as</string>
+    <string name="follow_start">Follow</string>
+    <string name="track_show_on_map">Show on map</string>
+    <string name="follow_explain">Following a track shows it like a route, with the distance and time left, your trip statistics and the climb ahead. There are no turn directions and no rerouting.</string>
+    <string name="follow_label">Following track</string>
+    <string name="follow_off_track">Off the track</string>
+    <string name="follow_done">Ridden</string>
+    <string name="follow_moving">Moving time</string>
+    <string name="follow_average">Average</string>
+    <string name="follow_climb_left">Climb left</string>
+    <string name="follow_progress">Done</string>
+    <string name="follow_top_speed">Top speed</string>
+    <string name="voice_off_track">You\'ve left the track</string>
+    <string name="voice_back_on_track">Back on the track</string>
+    <string name="nav_next_stop">Next stop: %1$s</string>
+
+    <!-- Over-speed alert -->
+    <string name="over_speed">Over-speed alert</string>
+    <string name="over_speed_subtitle">A beep and a spoken warning while navigating when you go faster than the speed limit. On a moped the limit is never more than 25 km/h. Only where the map knows the limit</string>
+    <string name="over_speed_margin">Warn above the limit by</string>
+    <string name="over_speed_margin_value">%1$d km/h</string>
+    <string name="nav_over_speed">Too fast</string>
+    <string name="voice_over_speed">You\'re going too fast</string>
+    <!-- Home, Work and recent searches -->
+    <string name="home_place">Home</string>
+    <string name="work_place">Work</string>
+    <string name="home_work_not_set">Not set</string>
+    <string name="home_work_hint">Open a place and tap \"Set as home\" or \"Set as work\" for a one-tap route there.</string>
+    <string name="set_as_home">Set as home</string>
+    <string name="set_as_work">Set as work</string>
+    <string name="is_home">Home</string>
+    <string name="is_work">Work</string>
+    <string name="recent_searches">Recent</string>
+    <string name="recent_clear">Clear</string>
+    <string name="recent_clear_title">Clear recent searches?</string>
+    <string name="recent_clear_body">The list of places you picked in search is forgotten. Your saved places stay.</string>
+    <string name="keep_recent">Keep recent searches</string>
+    <string name="keep_recent_subtitle">The places you pick in search are listed under Recent, stored encrypted on this phone with your saved places. Turning this off forgets them</string>
+    <!-- Open now -->
+    <string name="open_now">Open now</string>
+    <string name="open_now_short">Open now</string>
+    <string name="closed_now_short">Closed now</string>
+    <string name="open_now_none_title">Nothing open right now</string>
+    <string name="open_now_none_body">None of the %1$d places found is open by its listed hours. Places without opening hours in the map data, or with hours MapsCtrl can\'t read (holidays, months, dates), are left out while \"Open now\" is on.</string>
 </resources>

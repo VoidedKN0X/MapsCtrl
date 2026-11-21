@@ -369,7 +369,11 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
             }
             if (nav == null && !planning) {
                 when (state.tab) {
-                    TAB_SAVED -> TabPage { SavedScreen(onShow = { p -> state.tab = TAB_MAP; state.selected = p; controller.moveTo(p.point, 16, lift = 0.22) }, onShowTrack = { pts -> state.tab = TAB_MAP; controller.fit(pts) }) }
+                    TAB_SAVED -> TabPage { SavedScreen(onShow = { p -> state.tab = TAB_MAP; state.selected = p; controller.moveTo(p.point, 16, lift = 0.22) }, onShowTrack = { pts -> state.tab = TAB_MAP; controller.fit(pts) }, onFollow = { t, mode ->
+                        state.tab = TAB_MAP
+                        state.selected = null
+                        if (!hasPermission && !com.vknxworks.mapsctrl.BuildConfig.DEBUG) askLocation() else c.navigation.followTrack(t, mode, demo = !hasPermission)
+                    }) }
                     TAB_DOWNLOADS -> TabPage { DownloadsScreen() }
                     TAB_MORE -> TabPage { MoreScreen(onGoTo = { p -> state.tab = TAB_MAP; state.selected = p; controller.moveTo(p.point, 16, lift = 0.22) }) }
                 }
@@ -389,6 +393,12 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
                         state.searchOpen = false
                         state.tab = TAB_MAP
                         controller.fit(state.results.map { it.place.point })
+                    },
+                    onRoute = { place ->
+                        state.searchOpen = false
+                        state.tab = TAB_MAP
+                        state.selected = null
+                        c.planner.open(place, settings.travelMode)
                     },
                 )
             }

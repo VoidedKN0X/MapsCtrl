@@ -41,6 +41,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vknxworks.mapsctrl.R
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.clip
+import com.vknxworks.mapsctrl.geo.ElevationProfile
+import com.vknxworks.mapsctrl.routing.TravelMode
+import com.vknxworks.mapsctrl.ui.common.ElevationChart
+import com.vknxworks.mapsctrl.ui.components.CtrlBottomSheet
+import com.vknxworks.mapsctrl.ui.components.SectionLabel
+import com.vknxworks.mapsctrl.ui.theme.CtrlShapes
+import com.vknxworks.mapsctrl.ui.theme.CtrlType
 import com.vknxworks.mapsctrl.container
 import com.vknxworks.mapsctrl.geo.Geo
 import com.vknxworks.mapsctrl.geo.LatLon
@@ -65,7 +78,7 @@ import java.util.Date
 
 /** Saved places and tracks, track recording, and GPX import and export. */
 @Composable
-fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
+fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit, onFollow: (SavedTrack, TravelMode) -> Unit) {
     val context = LocalContext.current
     val c = context.container
     val scope = rememberCoroutineScope()
@@ -84,6 +97,7 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
     var deleting by remember { mutableStateOf<SavedPlace?>(null) }
     var deletingTrack by remember { mutableStateOf<SavedTrack?>(null) }
     var exportOnly by remember { mutableStateOf<SavedTrack?>(null) }
+    var opened by remember { mutableStateOf<SavedTrack?>(null) }
 
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
@@ -157,7 +171,7 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
                     t.name,
                     stringResource(R.string.track_subtitle, fmt.distance(t.lengthMeters, settings.units), DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(t.created))),
                     icon = Icons.Outlined.Timeline,
-                    onClick = { onShowTrack(t.segments.flatten()) },
+                    onClick = { opened = t },
                     trailing = {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             CtrlSquareButton(
@@ -183,6 +197,16 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
                 Text(stringResource(R.string.gpx_export))
             }
         }
+    }
+
+    opened?.let { t ->
+        TrackSheet(
+            track = t,
+            initialMode = settings.travelMode,
+            onDismiss = { opened = null },
+            onShow = { opened = null; onShowTrack(t.segments.flatten()) },
+            onFollow = { mode -> opened = null; onFollow(t, mode) },
+        )
     }
 
     renaming?.let { p ->
@@ -212,3 +236,64 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit) {
 }
 
 private fun safeName(s: String) = s.replace(Regex("[^A-Za-z0-9 ._-]"), "_").take(60).ifBlank { "track" }
+
+/** A track: its length, time and elevation profile, show it on the map or follow it. */
+@Composable
+private fun TrackSheet(track: SavedTrack, initialMode: TravelMode, onDismiss: () -> Unit, onShow: () -> Unit, onFollow: (TravelMode) -> Unit) {
+    val c = LocalContext.current.container
+    val fmt = rememberFmt()
+    val settings by c.settings.settings.collectAsStateWithLifecycle()
+    val profile = remember(track) { ElevationProfile.of(track.segments.flatten(), track.flatElevations()) }
+    val duration = remember(track) {
+        val times = track.times.flatten().filterNotNull()
+        if (times.size >= 2) (times.max() - times.min()) / 1000.0 else null
+    }
+    var mode by remember { mutableStateOf(initialMode) }
+    CtrlBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = Gutter).navigationBarsPadding()) {
+            Text(track.name, style = MaterialTheme.typography.titleLarge, maxLines = 2)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                listOfNotNull(fmt.distance(track.lengthMeters, settings.units), duration?.let { fmt.duration(it) }).joinToString(" · "),
+                style = CtrlType.Data,
+                color = CtrlColors.Muted,
+            )
+            Spacer(Modifier.height(12.dp))
+            if (profile != null) {
+                ElevationChart(profile, settings.units, Modifier.fillMaxWidth())
+            } else {
+                Text(stringResource(R.string.track_no_elevation), style = MaterialTheme.typography.bodySmall, color = CtrlColors.Muted)
+            }
+            Spacer(Modifier.height(16.dp))
+            SectionLabel(stringResource(R.string.follow_as))
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (m in TravelMode.entries) {
+                    val on = m == mode
+                    Text(
+                        stringResource(modeLabel(m)),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (on) CtrlColors.OnAccent else CtrlColors.Text,
+                        maxLines = 1,
+                        modifier = Modifier.clip(CtrlShapes.Control).background(if (on) CtrlColors.Accent else CtrlColors.Raised)
+                            .clickable { mode = m }.padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                CtrlButton(stringResource(R.string.follow_start), onClick = { onFollow(mode) }, icon = Icons.Filled.Navigation, modifier = Modifier.weight(1f))
+                CtrlSecondaryButton(onClick = onShow, modifier = Modifier.weight(1f).height(56.dp)) { Text(stringResource(R.string.track_show_on_map)) }
+            }
+            Text(stringResource(R.string.follow_explain), style = MaterialTheme.typography.bodySmall, color = CtrlColors.Muted, modifier = Modifier.padding(top = 10.dp))
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+fun modeLabel(m: TravelMode): Int = when (m) {
+    TravelMode.CAR -> R.string.mode_car
+    TravelMode.MOPED -> R.string.mode_moped
+    TravelMode.BIKE -> R.string.mode_bike
+    TravelMode.FOOT -> R.string.mode_foot
+}
