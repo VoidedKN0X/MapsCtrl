@@ -42,6 +42,8 @@ data class NavState(
     val muted: Boolean = false,
     val waitingForLocation: Boolean = true,
     val demo: Boolean = false,
+    /** The stops still ahead, in order (a stop is dropped from the list when you reach it). */
+    val stops: List<Place> = emptyList(),
 )
 
 /**
@@ -66,6 +68,8 @@ class NavigationSession(
     private var ntfyJob: Job? = null
     private var lastReroute = 0L
     private val warnedCameras = HashSet<Long>()
+    /** Where each stop still ahead is along the current route (same order as [NavState.stops]). */
+    private var stopAlongs: List<Double> = emptyList()
     private val words = ResourceWords(context)
 
     private var tts: TextToSpeech? = null
@@ -80,11 +84,12 @@ class NavigationSession(
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .build()
 
-    fun start(route: Route, destination: Place, demo: Boolean = false) {
+    fun start(route: Route, destination: Place, demo: Boolean = false, stops: List<Place> = emptyList()) {
         end(releaseVoice = false)
         tracker = NavigationTracker(route)
         warnedCameras.clear()
-        _state.value = NavState(route, destination, demo = demo)
+        stopAlongs = Stops.alongs(route, stops.map { it.point })
+        _state.value = NavState(route, destination, demo = demo, stops = stops)
         initTts()
         location.start("nav")
         loadCameras(route)
@@ -151,6 +156,16 @@ class NavigationSession(
             }
             return
         }
+        // A stop you've reached is said once and dropped, so a reroute no longer goes back to it.
+        if (s.stops.isNotEmpty() && stopAlongs.size == s.stops.size) {
+            val along = (t.route.cumulative.lastOrNull() ?: 0.0) - p.distanceLeft
+            val ahead = Stops.remaining(stopAlongs, along).toSet()
+            if (ahead.size < s.stops.size) {
+                s.stops.filterIndexed { i, _ -> i !in ahead }.lastOrNull()?.let { speak(context.getString(R.string.voice_stop_reached, it.name)) }
+                _state.value = _state.value?.copy(stops = s.stops.filterIndexed { i, _ -> i in ahead })
+                stopAlongs = stopAlongs.filterIndexed { i, _ -> i in ahead }
+            }
+        }
         if (p.offRoute && !s.rerouting && System.currentTimeMillis() - lastReroute > 8_000) {
             reroute(fix.point)
             return
@@ -171,12 +186,16 @@ class NavigationSession(
         _state.value = s.copy(rerouting = true)
         speak(context.getString(R.string.voice_rerouting))
         scope.launch {
-            val r = planner.reroute(from, s.destination.point, s.route.mode)
+            val stops = s.stops
+            val r = planner.reroute(from, s.destination.point, s.route.mode, stops.map { it.point })
             val cur = _state.value ?: return@launch
             if (r != null) {
                 tracker = NavigationTracker(r)
+                // The stops still ahead at the moment of the reroute are on the new route.
+                val left = cur.stops.filter { it in stops }
+                stopAlongs = Stops.alongs(r, left.map { it.point })
                 loadCameras(r)
-                _state.value = cur.copy(route = r, rerouting = false, progress = null)
+                _state.value = cur.copy(route = r, rerouting = false, progress = null, stops = left)
                 if (cur.demo) startDemo(r)
             } else {
                 _state.value = cur.copy(rerouting = false)
@@ -274,7 +293,7 @@ class NavigationSession(
     /** Moves a simulated position along the route, for testing navigation without the location permission. */
     private fun startDemo(route: Route) {
         demoJob?.cancel()
-        val speed = when (route.mode) { TravelMode.CAR -> 14.0; TravelMode.BIKE -> 5.5; TravelMode.FOOT -> 1.6 }
+        val speed = when (route.mode) { TravelMode.CAR -> 14.0; TravelMode.MOPED -> 6.9; TravelMode.BIKE -> 5.5; TravelMode.FOOT -> 1.6 }
         demoJob = scope.launch {
             val cum = route.cumulative
             val total = cum.lastOrNull() ?: return@launch

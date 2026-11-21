@@ -28,8 +28,12 @@ class Router(private val profileDir: File, private val segmentDir: File) {
         running?.terminate()
     }
 
-    /** Computes a route through [points] (start, optional stops, destination). */
-    fun route(points: List<LatLon>, mode: TravelMode, timeoutMs: Long = 60_000): Route {
+    /**
+     * Computes a route through [points] (start, optional stops, destination). [avoid] becomes the profile's own
+     * switches (see [RouteOptions]); [alternative] 1 to 3 asks BRouter for its 2nd to 4th choice of route (it works
+     * out the ones before it first, so each one takes longer).
+     */
+    fun route(points: List<LatLon>, mode: TravelMode, avoid: Set<Avoid> = emptySet(), alternative: Int = 0, timeoutMs: Long = 60_000): Route {
         require(points.size >= 2)
         val missing = Segments.tilesFor(points).filterNot { File(segmentDir, "$it.rd5").exists() }.toSet()
         if (missing.isNotEmpty()) throw RouteError.MissingSegments(missing)
@@ -45,9 +49,13 @@ class Router(private val profileDir: File, private val segmentDir: File) {
             }
         }
         // timode 1 = BRouter's own turn instructions; JSON output.
-        collector.setParams(rc, waypoints, mutableMapOf("timode" to "1", "format" to "json"))
+        val params = mutableMapOf("timode" to "1", "format" to "json")
+        if (alternative > 0) params["alternativeidx"] = alternative.coerceAtMost(3).toString()
+        collector.setParams(rc, waypoints, params)
         // Keep every OSM tag BRouter knows (maxspeed, speed cameras) in the result, not just the ones the profile uses.
-        collector.setProfileParams(rc, mutableMapOf("processUnusedTags" to "1"))
+        val profile = mutableMapOf("processUnusedTags" to "1")
+        profile += RouteOptions.profileParams(mode, avoid)
+        collector.setProfileParams(rc, profile)
 
         val engine = RoutingEngine(null, null, segmentDir, waypoints, rc)
         engine.quite = true

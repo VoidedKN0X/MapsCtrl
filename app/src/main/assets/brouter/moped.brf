@@ -1,0 +1,263 @@
+#
+# MapsCtrl moped profile: a Belgian "klasse A" moped (bromfiets klasse A, at most 25 km/h).
+#
+# Written for MapsCtrl, built on the structure of BRouter's car-vario profile (kinematic model) with the
+# access rules for a slow two-wheeler. It is a best effort from the rules below and from how Belgium maps
+# them in OpenStreetMap; check it against the local rules and the road signs, they always win.
+#
+# The rules it follows (Belgian traffic code, "wegcode"):
+# - Art. 9.1.2, 1°: riders of two-wheeled class A mopeds must use a rideable cycle path (fietspad) that is on
+#   their side of the road. Roads that OpenStreetMap marks as having their cycle path mapped separately
+#   (bicycle=use_sidepath, mofa=use_sidepath, cycleway:both=separate) are therefore avoided strongly, so the
+#   route takes the cycle path next to them.
+# - Art. 21.1 and 22.1: no mopeds on motorways (autosnelweg) or motor roads (autoweg, motorroad=yes).
+# - Cycle paths (highway=cycleway) are open to class A mopeds unless the map says otherwise.
+# - Footways, pedestrian streets, steps, bridleways and paths are closed to mopeds unless the map explicitly
+#   opens them (mofa=yes or moped=yes).
+# - Roads closed to mopeds (mofa=no; moped=no on an ordinary road; motor_vehicle, vehicle or access saying no)
+#   are not used.
+#
+# In OpenStreetMap in Belgium "mofa" is a class A moped and "moped" is a class B moped.
+#
+---model:btools.router.KinematicModel
+
+---context:global
+
+# A motor vehicle for turn restrictions and turn instructions.
+assign validForCars        = true
+
+# Use the following switches to change behaviour
+assign avoid_unpaved       = false  # %avoid_unpaved% | Avoid unpaved roads, if possible | boolean
+assign avoid_ferries       = false  # %avoid_ferries% | Avoid ferries | boolean
+
+# Kinematic model parameters: a moped with its rider
+assign vmax             = 25     # %vmax% | Target speed (in km/h) | number
+assign recup_efficiency = 0      # %recup_efficiency% | (ratio) | number
+assign totalweight      = 130    # %totalweight% | Total weight of moped and rider (in kg) | number
+assign f_roll           = 19     # %f_roll% | Rolling friction (in Newton) | number
+assign f_air            = 0.3    # %f_air% | Drag force (in Newton / (m/s)^2), 0.5*cw*A*rho | number
+assign f_recup          = 100    # %f_recup% | Newton | number
+assign p_standby        = 50     # %p_standby% | Watt | number
+
+# Turn instructions settings
+assign turnInstructionMode          = 1     # %turnInstructionMode% | Mode for the generated turn instructions | [0=none, 1=auto-choose, 2=locus-style, 3=osmand-style, 4=comment-style, 5=gpsies-style, 6=orux-style, 7=locus-old-style]
+
+# Technical parameters
+assign pass1coefficient    = 1.3
+
+
+---context:way   # following code refers to way-tags
+
+# classifier constants
+assign classifier_none        = 1
+assign classifier_ferry       = 2
+
+assign isresidentialorliving = or highway=residential|living_street living_street=yes
+
+# Never on a motorway or a motor road (art. 21.1 and 22.1).
+assign isforbiddenroad = or highway=motorway|motorway_link motorroad=yes
+
+# Ways that are not for motor traffic at all, unless the map opens them for mopeds.
+assign isfootorpath = highway=footway|pedestrian|steps|bridleway|path|platform|corridor
+
+assign mopedopened = or mofa=yes|designated moped=yes|designated
+
+#
+# access on ordinary roads: the class A key first (mofa), then mopeds in general, then motor vehicles
+#
+assign roadaccess
+       switch mofa=
+              switch moped=no
+                     0
+                     switch motor_vehicle=
+                            switch vehicle=
+                                   switch access=
+                                          switch highway=trunk|trunk_link             1
+                                          switch highway=primary|primary_link         1
+                                          switch highway=secondary|secondary_link     1
+                                          switch highway=tertiary|tertiary_link       1
+                                          switch highway=unclassified                 1
+                                          switch isresidentialorliving                1
+                                          switch highway=service                      1
+                                          switch highway=track                        1
+                                          switch highway=road                         1
+                                          switch route=ferry                          1
+                                          0
+                                          access=yes|permissive|designated|destination
+                                   vehicle=yes|permissive|designated|destination
+                            motor_vehicle=yes|permissive|designated|destination
+              mofa=yes|designated
+
+#
+# cycle paths: open to class A mopeds (art. 9.1.2), unless the map closes them
+#
+assign cyclewayaccess
+       switch mofa=
+              not bicycle=no
+              mofa=yes|designated
+
+assign mopedaccess =
+       if isforbiddenroad then false
+       else if highway=cycleway then cyclewayaccess
+       else if isfootorpath then mopedopened
+       else roadaccess
+
+# The cycle path next to this road is mapped as its own way: it must be used, so this road is avoided.
+assign hasseparatecyclepath = or bicycle=use_sidepath or mofa=use_sidepath cycleway:both=separate
+
+#
+# for any change in initialclassifier, initialcost is added once
+#
+assign initialclassifier =
+     if route=ferry then classifier_ferry
+     else classifier_none
+
+assign initialcost =
+     if      ( and highway= not route=ferry ) then 10000
+     else if ( equal initialclassifier classifier_ferry ) then 10000
+     else 0
+
+assign accessspeedlimit = if mopedaccess then 999 else 0
+
+assign isbadoneway = if reversedirection=yes then ( if oneway= then junction=roundabout else oneway=yes|true|1 ) else oneway=-1
+assign onewayspeedlimit = if isbadoneway then 0 else 999
+
+assign islinktype = highway=motorway_link|trunk_link|primary_link|secondary_link|tertiary_link
+
+assign maxspeed_surface =
+  switch or surface= surface=paved|asphalt|concrete 999
+  switch surface=paving_stones|cobblestone|sett 20
+  switch surface=fine_gravel ( switch avoid_unpaved 8 15 )
+  switch avoid_unpaved 3 10
+
+assign maxspeed_tracktype =
+  switch tracktype= 999
+  switch tracktype=grade1 25
+  switch tracktype=grade2 ( switch avoid_unpaved 5 15 )
+  switch avoid_unpaved 3 8
+
+assign maxspeed_implicit =
+  switch route=ferry                        10
+  switch highway=living_street              20
+  switch living_street=yes                  20
+  switch highway=track switch tracktype=grade1 25 10
+  switch highway=road                       15
+  999
+
+assign maxspeed_explicit =
+  switch maxspeed=10 10
+  switch maxspeed=20 20
+  999
+
+assign maxspeed =
+  min onewayspeedlimit
+  min accessspeedlimit
+  min maxspeed_explicit
+  min maxspeed_implicit
+  min maxspeed_surface maxspeed_tracktype
+
+# Busy main roads are unpleasant at 25 km/h: a small extra cost, so quieter roads win when they're close.
+assign mainroad_penalty =
+  switch highway=trunk|trunk_link 20
+  switch highway=primary|primary_link 10
+  0
+
+assign sidepath_penalty = if hasseparatecyclepath then 150 else 0
+
+assign unpaved_penalty =
+  if avoid_unpaved then
+    ( if highway=track then ( if tracktype=grade1 then 0 else 60 )
+      else if surface=unpaved|gravel|dirt|earth|grass|ground|mud|sand then 60
+      else 0 )
+  else 0
+
+assign costfactor =
+  if ( equal maxspeed 0 ) then 10000
+  else if ( and route=ferry avoid_ferries ) then 10000
+  else min 9999
+  add mainroad_penalty
+  add sidepath_penalty
+  unpaved_penalty
+
+assign minspeed = 0
+
+# way priorities used for voice hint generation
+
+assign priorityclassifier =
+
+  if      ( highway=motorway                  ) then  30
+  else if ( highway=motorway_link             ) then  29
+  else if ( highway=trunk                     ) then  28
+  else if ( highway=trunk_link                ) then  27
+  else if ( highway=primary                   ) then  26
+  else if ( highway=primary_link              ) then  25
+  else if ( highway=secondary                 ) then  24
+  else if ( highway=secondary_link            ) then  23
+  else if ( highway=tertiary                  ) then  22
+  else if ( highway=tertiary_link             ) then  21
+  else if ( highway=unclassified              ) then  20
+  else if ( isresidentialorliving             ) then  6
+  else if ( highway=service                   ) then  6
+  else if ( highway=cycleway                  ) then  5
+  else if ( highway=track                     ) then if tracktype=grade1 then 4 else 2
+  else if ( highway=bridleway|road|path       ) then  2
+  else 0
+
+# some more classifying bits used for voice hint generation...
+
+assign isgoodoneway = if reversedirection=yes then oneway=-1
+                      else if oneway= then junction=roundabout else oneway=yes|true|1
+assign isroundabout = junction=roundabout
+assign isgoodforcars = if greater priorityclassifier 6 then true
+                  else if or isresidentialorliving highway=service|cycleway then true
+                  else if ( and highway=track tracktype=grade1 ) then true
+                  else false
+
+# ... encoded into a bitmask
+
+assign classifiermask add          isbadoneway
+                      add multiply isgoodoneway   2
+                      add multiply isroundabout   4
+                      add multiply islinktype     8
+                      add multiply isgoodforcars 16
+                          multiply isresidentialorliving 32
+
+---context:node  # following code refers to node tags
+
+# Barriers a moped can't get through when nothing else is said; bollards and cycle barriers on cycle paths
+# are passed (slowly), as a bicycle would.
+assign isblockingbarrier = barrier=gate|lift_gate|stile|turnstile|full-height_turnstile|kissing_gate|block|jersey_barrier|motorcycle_barrier|fence|wall|ditch|hedge|log|chain|horse_stile|sliding_gate|swing_gate
+
+assign defaultaccess =
+       switch access=
+              not isblockingbarrier
+              access=yes|permissive|designated|destination
+
+# On a cycle path a "no motor vehicles" barrier is meant for cars, not for class A mopeds.
+assign oncyclepath = equal way:priorityclassifier 5
+
+assign mopedaccess =
+       switch motor_vehicle=
+              switch vehicle=
+                     defaultaccess
+                     vehicle=yes|permissive|designated|destination
+              switch oncyclepath
+                     defaultaccess
+                     motor_vehicle=yes|permissive|designated|destination
+
+assign initialcost =
+       switch mopedaccess
+              switch barrier=cycle_barrier|bollard 30 0
+              1000000
+
+assign maxspeed =
+
+       if or crossing=traffic_signals highway=traffic_signals
+       then
+         switch greater way:priorityclassifier 24 5
+         switch greater way:priorityclassifier 22 3
+         switch greater way:priorityclassifier 20 1
+         0
+       else if barrier=cycle_barrier|bollard then 5
+       else if railway=level_crossing then 0
+       else 999

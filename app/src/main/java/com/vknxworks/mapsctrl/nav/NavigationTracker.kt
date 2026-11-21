@@ -70,11 +70,12 @@ class NavigationTracker(
     private var offCount = 0
     private val spoken = HashMap<Int, Int>() // hint index -> the closest stage already said
 
-    private val offRouteLimit = when (route.mode) { TravelMode.CAR -> 45.0; TravelMode.BIKE -> 35.0; TravelMode.FOOT -> 30.0 }
+    private val offRouteLimit = when (route.mode) { TravelMode.CAR -> 45.0; TravelMode.MOPED -> 35.0; TravelMode.BIKE -> 35.0; TravelMode.FOOT -> 30.0 }
 
     /** Distance thresholds before a turn: far, near, now. */
     private val stages: DoubleArray = when (route.mode) {
         TravelMode.CAR -> doubleArrayOf(1500.0, 400.0, 70.0)
+        TravelMode.MOPED -> doubleArrayOf(600.0, 150.0, 35.0)
         TravelMode.BIKE -> doubleArrayOf(400.0, 120.0, 30.0)
         TravelMode.FOOT -> doubleArrayOf(200.0, 60.0, 15.0)
     }
@@ -124,7 +125,7 @@ class NavigationTracker(
         )
     }
 
-    private fun cameraWarnDistance(): Double = when (route.mode) { TravelMode.CAR -> 500.0; else -> 150.0 }
+    private fun cameraWarnDistance(): Double = when (route.mode) { TravelMode.CAR -> 500.0; TravelMode.MOPED -> 250.0; else -> 150.0 }
 
     /**
      * What to say for this position, if anything: each turn is announced at most once per stage (far, near,

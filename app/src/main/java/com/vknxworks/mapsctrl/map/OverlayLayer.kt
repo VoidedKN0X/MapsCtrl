@@ -20,6 +20,8 @@ data class OverlayState(
     val selected: LatLon? = null,
     val routeStart: LatLon? = null,
     val routeEnd: LatLon? = null,
+    /** Stops on the way, drawn as filled violet dots with a ring. */
+    val stops: List<LatLon> = emptyList(),
     val fix: Fix? = null,
     /** Direction you're facing (compass or travel), when known. */
     val heading: Float? = null,
@@ -73,6 +75,12 @@ class OverlayLayer(context: Context) : Layer() {
             val (x, y) = px(p)
             fill.color = ring; c.drawCircle(x, y, 8f * density, fill)
             stroke.color = violet; stroke.strokeWidth = 3f * density; c.drawCircle(x, y, 5f * density, stroke)
+        }
+        // Stops on the way: filled dots.
+        for (p in s.stops) {
+            val (x, y) = px(p)
+            fill.color = ring; c.drawCircle(x, y, 8f * density, fill)
+            fill.color = violet; c.drawCircle(x, y, 5.5f * density, fill)
         }
         // Route end and the selected place: a pin.
         (s.selected ?: s.routeEnd)?.let { p -> drawPin(c, px(p), ring) }

@@ -68,6 +68,7 @@
     <string name="route_tap_map">Tap the map…</string>
     <string name="route_swap">Swap start and destination</string>
     <string name="mode_car">Car</string>
+    <string name="mode_moped">Moped</string>
     <string name="mode_bike">Bike</string>
     <string name="mode_foot">Foot</string>
     <string name="route_computing">Finding a route…</string>
@@ -420,4 +421,23 @@
     <string name="lic_apache2" translatable="false">Apache-2.0</string>
     <string name="lic_ofl" translatable="false">OFL-1.1</string>
     <string name="lic_odbl" translatable="false">ODbL</string>
+    <!-- Moped, route options, stops and other routes -->
+    <string name="moped_notice">Moped routes follow the Belgian rules for a class A moped (25 km/h): cycle paths where there are any, never motorways or motor roads, and no roads closed to mopeds. MapsCtrl can only go by the map data: check the route against the local rules and the road signs, they always come first.</string>
+    <string name="route_options">Route options</string>
+    <string name="route_avoiding">Avoiding %1$s</string>
+    <string name="route_options_body">Only what this travel mode\'s routing can avoid is shown. The route avoids these where it can; when there\'s no other way, it may still use them.</string>
+    <string name="route_options_car_ferries">The car routing has no switch for ferries.</string>
+    <string name="route_options_moped">Mopeds never use motorways or motor roads, so there\'s nothing to switch for those, or for tolls.</string>
+    <string name="avoid_tolls">Avoid toll roads</string>
+    <string name="avoid_motorways">Avoid motorways</string>
+    <string name="avoid_unpaved">Avoid unpaved roads</string>
+    <string name="avoid_ferries">Avoid ferries</string>
+    <string name="route_via">Via</string>
+    <string name="route_add_stop">Add a stop</string>
+    <string name="route_stop_up">Move stop earlier</string>
+    <string name="route_stop_remove">Remove stop</string>
+    <string name="route_alternatives">Other routes</string>
+    <string name="route_alternatives_computing">Looking for other routes…</string>
+    <string name="route_alternatives_none">No other routes found.</string>
+    <string name="voice_stop_reached">Stop reached: %1$s</string>
 </resources>

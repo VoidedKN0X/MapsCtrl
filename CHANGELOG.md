@@ -4,6 +4,17 @@ What changed in each MapsCtrl release. Every release on the [Releases page](http
 
 To publish a new version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, add a section here, and push to `main`. Pushes without a version bump only build; they don't make a release.
 
+## Unreleased
+
+Built and checked by CI only: nothing in this section had been run on a phone when it was written.
+
+### New
+
+- **Moped routes.** Route planning has a new **Moped** mode for a Belgian class A moped (bromfiets klasse A, at most 25 km/h). It follows MapsCtrl's own routing profile (`moped.brf`, written for this version on the structure of the car profile): it takes the cycle path where a road has one mapped next to it (the wegcode, art. 9.1.2, says class A mopeds must use a rideable cycle path), uses cycle paths unless the map closes them to class A mopeds, never uses motorways or motor roads (art. 21.1 and 22.1), stays off footways, pedestrian streets and paths unless the map opens them to mopeds, and skips roads closed to mopeds or to motor vehicles. Times are worked out for 25 km/h. OpenStreetMap in Belgium tags class A mopeds as `mofa` and class B as `moped`; the profile reads both. Under every moped route MapsCtrl says plainly that it can only go by the map data and that the local rules and road signs come first. Moped can also be picked as the default travel mode in Settings. The profile was checked on a computer with the same routing engine (it loads, and sample roads get the access described here); it has not been ridden.
+- **Route options: avoid toll roads, motorways, unpaved roads and ferries.** **Route options** under the travel modes opens the switches that the travel mode's routing profile has: car avoids toll roads, motorways and unpaved roads (the car profile has no ferry switch); moped avoids unpaved roads and ferries; bike and foot avoid ferries. The choices are kept for next time, the route is worked out again straight away, and the line under the modes says what's being avoided. When there's no other way, a route can still use them.
+- **Stops on the way.** **Add a stop** in route planning adds a stop from search or a point you tap on the map (up to five). Each stop can be moved earlier or removed. The stops are shown on the map, navigation says "Stop reached" when you pass one, and a reroute goes through the stops still ahead.
+- **Other routes.** **Other routes** under a route asks the router for up to two more. Each one appears as a card with its time and distance; tap one to pick it (it's drawn in violet, the others in grey) and **Start** navigates along it. They're only worked out when you ask, since each takes another run of the router.
+
 ## v0.6.0 (2026-11-21)
 
 Built and checked by CI only: nothing in this release had been run on a phone when it was published. It is the first release built with the new build tools (Android Gradle Plugin 9, stricter code shrinking), so update over your installed version and check that your data and settings are still there.

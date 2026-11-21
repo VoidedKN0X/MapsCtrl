@@ -35,7 +35,7 @@ class AppContainer(val context: Context) {
     val location = LocationSource(context)
     val transit = TransitPlanner(appScope)
     val terrain = TerrainRepository(context, appScope)
-    val planner = RoutePlanner(appScope, segments, mapFiles = { maps.mapFiles() }, transit = transit) { location.fix.value?.point }
+    val planner = RoutePlanner(appScope, segments, mapFiles = { maps.mapFiles() }, transit = transit, avoid = { settings.settings.value.avoid }) { location.fix.value?.point }
     val navigation = NavigationSession(context, appScope, location, planner, search, settings)
     val recorder = TrackRecorder(context, appScope, location, saved)
 

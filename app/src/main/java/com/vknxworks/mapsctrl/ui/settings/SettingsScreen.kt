@@ -79,7 +79,7 @@ fun SettingsScreen() {
             Group(stringResource(R.string.group_navigation)) {
                 GroupChoice(
                     stringResource(R.string.default_mode),
-                    listOf(TravelMode.CAR to stringResource(R.string.mode_car), TravelMode.BIKE to stringResource(R.string.mode_bike), TravelMode.FOOT to stringResource(R.string.mode_foot)),
+                    listOf(TravelMode.CAR to stringResource(R.string.mode_car), TravelMode.MOPED to stringResource(R.string.mode_moped), TravelMode.BIKE to stringResource(R.string.mode_bike), TravelMode.FOOT to stringResource(R.string.mode_foot)),
                     s.travelMode,
                     icon = Icons.Outlined.DirectionsCar,
                 ) { v -> set { it.copy(travelMode = v) } }

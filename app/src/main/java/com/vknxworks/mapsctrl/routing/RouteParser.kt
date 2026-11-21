@@ -31,6 +31,9 @@ object RouteParser {
             val a = c.jsonArray
             LatLon(a[1].jsonPrimitive.doubleOrNull ?: 0.0, a[0].jsonPrimitive.doubleOrNull ?: 0.0)
         }
+        // A third number per point is the height (BRouter leaves it out where its data has none).
+        val heights = coords.map { c -> c.jsonArray.getOrNull(2)?.jsonPrimitive?.doubleOrNull?.toFloat() }
+        val elevations = if (heights.isNotEmpty() && heights.all { it != null }) heights.map { it!! } else emptyList()
         val times = (props["times"] as? JsonArray)?.map { it.jsonPrimitive.doubleOrNull?.toFloat() ?: 0f }.orEmpty()
 
         val hints = (props["voicehints"] as? JsonArray)?.mapNotNull { h ->
@@ -54,6 +57,7 @@ object RouteParser {
             durationSeconds = props.number("total-time") ?: (times.lastOrNull()?.toDouble() ?: 0.0),
             hints = hints,
             sections = sections,
+            elevations = elevations,
         )
     }
 

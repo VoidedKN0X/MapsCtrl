@@ -323,6 +323,24 @@ class MapController(
     fun setResults(points: List<LatLon>) = overlay.update { it.copy(results = points) }
     fun setFix(fix: Fix?, heading: Float?) = overlay.update { it.copy(fix = fix, heading = heading) }
     fun setRouteEnds(start: LatLon?, end: LatLon?) = overlay.update { it.copy(routeStart = start, routeEnd = end) }
+    fun setStops(stops: List<LatLon>) = overlay.update { it.copy(stops = stops) }
+
+    private val alternativeLayers = mutableListOf<Polyline>()
+
+    /** Other routes you could take, drawn in grey under the chosen one. */
+    fun setAlternatives(routes: List<Route>) {
+        val layers = view.layerManager.layers
+        alternativeLayers.forEach { layers.remove(it) }
+        alternativeLayers.clear()
+        val index = layers.indexOf(routeCasing).coerceAtLeast(1)
+        for (r in routes) {
+            val l = line(if (night) 0xCC6E6E78.toInt() else 0xCC8A8A94.toInt(), 6f)
+            l.latLongs.addAll(r.points.map { LatLong(it.lat, it.lon) })
+            alternativeLayers += l
+            layers.add(index, l)
+        }
+        view.layerManager.redrawLayers()
+    }
     fun setNightOverlay(isNight: Boolean) = overlay.update { it.copy(night = isNight) }
 
     /** Saved place markers close to a screen point, for taps. */

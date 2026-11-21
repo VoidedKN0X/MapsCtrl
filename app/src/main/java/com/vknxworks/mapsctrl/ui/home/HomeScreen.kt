@@ -99,6 +99,8 @@ class HomeState {
     var follow by mutableStateOf(Follow.OFF)
     /** Next tap on the map sets the route's start. */
     var pickStart by mutableStateOf(false)
+    /** Next tap on the map adds a stop to the route. */
+    var pickStop by mutableStateOf(false)
     /** While navigating: you moved the map yourself, so it stops following until "Recenter". */
     var navPanned by mutableStateOf(false)
 }
@@ -198,8 +200,14 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
     // ---- Feed the map ----
     LaunchedEffect(installed) { controller.setMaps(installed.map { c.maps.mapFile(it.path) }.filter { it.exists() }) }
     LaunchedEffect(night) { controller.setNight(night); controller.setNightOverlay(night) }
-    val route = nav?.route ?: (plan.status as? PlanStatus.Ready)?.route?.takeIf { !plan.transit }
+    val route = nav?.route ?: plan.chosen?.takeIf { !plan.transit }
     LaunchedEffect(route, night) { controller.setRoute(route) }
+    // The other routes found while planning, in grey under the chosen one.
+    val others = if (nav == null && !plan.transit && plan.destination != null) plan.routes.filter { it !== route } else emptyList()
+    LaunchedEffect(others, night) { controller.setAlternatives(others) }
+    // Stops on the way: the ones planned, or the ones still ahead while navigating.
+    val stopPoints = (nav?.stops ?: plan.stops.takeIf { plan.destination != null && !plan.transit }.orEmpty()).map { it.point }
+    LaunchedEffect(stopPoints) { controller.setStops(stopPoints) }
     // Hillshading: on in the layers sheet, with elevation tiles on the phone.
     val demTiles by c.terrain.files.collectAsStateWithLifecycle()
     LaunchedEffect(settings.hillshading, demTiles) {
@@ -224,8 +232,9 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
         val s = when (val st = plan.start) { RouteStart.MyLocation -> null; is RouteStart.At -> st.place.point }
         controller.setRouteEnds(if (plan.destination != null) s else null, plan.destination?.point)
     }
-    // Show a new route whole.
-    LaunchedEffect(route) { if (route != null && nav == null) controller.fit(route.points) }
+    // Show a new route whole (not when you only pick another of the routes found).
+    val first = (plan.status as? PlanStatus.Ready)?.route
+    LaunchedEffect(first) { if (first != null && nav == null) controller.fit(first.points) }
 
     // Your position and heading on the map, and the map following you.
     PositionFeed(controller, state, navigating = nav != null)
@@ -253,6 +262,10 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
             state.pickStart -> {
                 state.pickStart = false
                 c.planner.setStart(RouteStart.At(Place(context.getString(R.string.point_on_map), p)))
+            }
+            state.pickStop -> {
+                state.pickStop = false
+                c.planner.addStop(Place(context.getString(R.string.point_on_map), p))
             }
             nav != null -> Unit
             else -> {
@@ -292,10 +305,11 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
     }
     LaunchedEffect(openTab) { openTab?.let { state.tab = it; c.openTab.value = null } }
 
-    BackHandler(state.searchOpen || state.selected != null || state.pickStart || plan.destination != null || state.tab != TAB_MAP) {
+    BackHandler(state.searchOpen || state.selected != null || state.pickStart || state.pickStop || plan.destination != null || state.tab != TAB_MAP) {
         when {
             state.searchOpen -> state.searchOpen = false
             state.pickStart -> state.pickStart = false
+            state.pickStop -> state.pickStop = false
             plan.destination != null && nav == null -> c.planner.close()
             state.selected != null -> state.selected = null
             state.tab != TAB_MAP -> state.tab = TAB_MAP
@@ -330,13 +344,15 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
                     hasLocation = hasFix,
                     hasPermission = hasPermission,
                     pickingStart = state.pickStart,
-                    onPickStart = { state.pickStart = true },
+                    onPickStart = { state.pickStart = true; state.pickStop = false },
+                    pickingStop = state.pickStop,
+                    onPickStop = { state.pickStop = true; state.pickStart = false },
                     onAskLocation = ::askLocation,
                     onStart = { demo ->
-                        val r = (plan.status as? PlanStatus.Ready)?.route ?: return@RoutePanel
+                        val r = plan.chosen ?: return@RoutePanel
                         val dest = plan.destination ?: return@RoutePanel
                         if (!demo && !hasPermission) { askLocation(); return@RoutePanel }
-                        c.navigation.start(r, dest, demo)
+                        c.navigation.start(r, dest, demo, plan.stops)
                         c.planner.close()
                         state.selected = null
                     },

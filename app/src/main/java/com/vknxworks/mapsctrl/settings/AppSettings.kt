@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.vknxworks.mapsctrl.R
+import com.vknxworks.mapsctrl.routing.Avoid
 import com.vknxworks.mapsctrl.routing.TravelMode
 import com.vknxworks.mapsctrl.routing.Units
 import kotlinx.coroutines.CoroutineScope
@@ -56,7 +57,27 @@ data class AppSettings(
     val hillshading: Boolean = false,
     /** Show the Transit mode (public transport from Transitous) in route planning. */
     val transitEnabled: Boolean = true,
-)
+    /** What routes avoid, where the travel mode's routing profile can (see RouteOptions). */
+    val avoidTolls: Boolean = false,
+    val avoidMotorways: Boolean = false,
+    val avoidUnpaved: Boolean = false,
+    val avoidFerries: Boolean = false,
+) {
+    val avoid: Set<Avoid>
+        get() = buildSet {
+            if (avoidTolls) add(Avoid.TOLLS)
+            if (avoidMotorways) add(Avoid.MOTORWAYS)
+            if (avoidUnpaved) add(Avoid.UNPAVED)
+            if (avoidFerries) add(Avoid.FERRIES)
+        }
+
+    fun withAvoid(a: Avoid, on: Boolean): AppSettings = when (a) {
+        Avoid.TOLLS -> copy(avoidTolls = on)
+        Avoid.MOTORWAYS -> copy(avoidMotorways = on)
+        Avoid.UNPAVED -> copy(avoidUnpaved = on)
+        Avoid.FERRIES -> copy(avoidFerries = on)
+    }
+}
 
 class SettingsRepository(private val context: Context, scope: CoroutineScope) {
     private object K {
@@ -77,6 +98,10 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         val hideScreenshots = booleanPreferencesKey("hide_screenshots")
         val hillshading = booleanPreferencesKey("hillshading")
         val transitEnabled = booleanPreferencesKey("transit_enabled")
+        val avoidTolls = booleanPreferencesKey("avoid_tolls")
+        val avoidMotorways = booleanPreferencesKey("avoid_motorways")
+        val avoidUnpaved = booleanPreferencesKey("avoid_unpaved")
+        val avoidFerries = booleanPreferencesKey("avoid_ferries")
     }
 
     private val prefs: Flow<Preferences> = context.appDataStore.data.catch { e ->
@@ -107,6 +132,10 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         hideScreenshots = this[K.hideScreenshots] ?: false,
         hillshading = this[K.hillshading] ?: false,
         transitEnabled = this[K.transitEnabled] ?: true,
+        avoidTolls = this[K.avoidTolls] ?: false,
+        avoidMotorways = this[K.avoidMotorways] ?: false,
+        avoidUnpaved = this[K.avoidUnpaved] ?: false,
+        avoidFerries = this[K.avoidFerries] ?: false,
     )
 
     /** Saves a change. If the phone's storage fails, the change is dropped instead of closing the app. */
@@ -131,6 +160,10 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
                 p[K.hideScreenshots] = s.hideScreenshots
                 p[K.hillshading] = s.hillshading
                 p[K.transitEnabled] = s.transitEnabled
+                p[K.avoidTolls] = s.avoidTolls
+                p[K.avoidMotorways] = s.avoidMotorways
+                p[K.avoidUnpaved] = s.avoidUnpaved
+                p[K.avoidFerries] = s.avoidFerries
             }
         } catch (_: IOException) {
         }

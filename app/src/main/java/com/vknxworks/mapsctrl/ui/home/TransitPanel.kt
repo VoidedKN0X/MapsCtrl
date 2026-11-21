@@ -100,19 +100,20 @@ private const val SOURCES_URL = "https://transitous.org/sources/"
 @Composable
 fun TransitChip(selected: Boolean, modifier: Modifier) {
     val c = LocalContext.current.container
-    Row(
+    // Same shape as the travel mode chips: the label under the icon.
+    androidx.compose.foundation.layout.Column(
         modifier
-            .height(44.dp)
+            .height(52.dp)
             .clip(CtrlShapes.Control)
             .background(if (selected) CtrlColors.Accent else CtrlColors.Raised)
             .clickable(role = Role.Tab) { if (!selected) c.planner.setTransit() }
-            .padding(horizontal = 4.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 2.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(Icons.Filled.DirectionsTransit, null, Modifier.size(18.dp), tint = if (selected) CtrlColors.OnAccent else CtrlColors.Text)
-        Spacer(Modifier.width(4.dp))
-        Text(stringResource(R.string.mode_transit), style = MaterialTheme.typography.labelMedium, color = if (selected) CtrlColors.OnAccent else CtrlColors.Text, maxLines = 1)
+        Spacer(Modifier.height(2.dp))
+        Text(stringResource(R.string.mode_transit), style = MaterialTheme.typography.labelSmall, color = if (selected) CtrlColors.OnAccent else CtrlColors.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
 }
 

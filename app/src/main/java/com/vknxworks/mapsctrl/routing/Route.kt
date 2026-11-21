@@ -6,6 +6,8 @@ import com.vknxworks.mapsctrl.geo.LatLon
 /** How you travel; each one is a BRouter profile bundled with the app. */
 enum class TravelMode(val profile: String) {
     CAR("car-vario"),
+    /** A Belgian class A moped (25 km/h): cycle paths where there are any, never motorways. Our own profile. */
+    MOPED("moped"),
     BIKE("trekking"),
     FOOT("hiking-mountain"),
 }
@@ -60,6 +62,8 @@ data class Route(
     val durationSeconds: Double,
     val hints: List<TurnHint>,
     val sections: List<WaySection>,
+    /** Height above sea level of each point in metres (same size as [points]), or empty when BRouter gave none. */
+    val elevations: List<Float> = emptyList(),
 ) {
     /** Distance from the start to each point, in metres. */
     val cumulative: DoubleArray by lazy {
