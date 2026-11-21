@@ -39,7 +39,7 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 - **Share your ETA with ntfy** (off by default): while navigating, your arrival time and the distance left go to an ntfy topic on a server you choose. Never your position
 - **Back up and restore settings** to a JSON file you pick: settings only, without your ntfy topic or where the map was last; restoring shows what will change and asks first
 - **Opens `geo:` links** from other apps
-- **English and Dutch:** MapsCtrl follows your phone's language (Dutch in informal "je", for Belgium and the Netherlands); other languages get English. Spoken directions use the same language when your phone's text-to-speech has a voice for it
+- **English, Dutch, French and German:** MapsCtrl follows your phone's language (Dutch in informal "je", for Belgium and the Netherlands; French in "vous"; German in "du"); other languages get English. Spoken directions use the same language when your phone's text-to-speech has a voice for it
 - **Ctrl / Signal look:** dark and light, following your phone, one violet accent, Space Grotesk and JetBrains Mono
 
 **Not yet:** Android Auto, contour lines and live traffic.
