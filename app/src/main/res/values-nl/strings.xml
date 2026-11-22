@@ -157,7 +157,6 @@
     <string name="terrain_delete_title">Terreingegevens voor %1$s verwijderen?</string>
     <string name="terrain_delete_body">De reliëfschaduw verdwijnt in dit gebied. Tegels die een andere kaart nog gebruikt, blijven.</string>
     <string name="nav_start">Start</string>
-    <string name="nav_demo">Demo</string>
     <string name="nav_next">Volgende</string>
     <string name="nav_then">Dan</string>
     <string name="nav_waiting">Wachten op positie</string>

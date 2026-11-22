@@ -21,10 +21,14 @@
 # AndroidX's concurrent-futures still names its interface in classes MapsCtrl never uses.
 -dontwarn com.google.common.util.concurrent.ListenableFuture
 
-# No debug, verbose or info logging in release builds (MapsCtrl's own code only logs warnings; this also
-# silences libraries).
+# No logging at all in release builds: MapsCtrl's own code doesn't log, and any Log call that sneaks in
+# later (or one in a library) is stripped.
 -assumenosideeffects class android.util.Log {
     public static int v(...);
     public static int d(...);
     public static int i(...);
+    public static int w(...);
+    public static int e(...);
+    public static int wtf(...);
+    public static int println(...);
 }

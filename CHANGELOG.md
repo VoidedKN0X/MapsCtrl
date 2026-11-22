@@ -4,6 +4,15 @@ What changed in each MapsCtrl release. Every release on the [Releases page](http
 
 To publish a new version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, add a section here, and push to `main`. Pushes without a version bump only build; they don't make a release.
 
+## Unreleased
+
+### Removed
+
+- **The Demo drive is gone.** Builds made on a computer (never the release you install) had a **Demo** button next to **Start** in the route panel that drove a pretend position along the route, showed "Demo" on the navigation card, and let you follow a saved track without the location permission. The button, the pretend driving and the "Demo" label are gone, and every build now asks for the location permission before navigating or following a track, as the release always did. The note under Start that navigation follows your position (when the route was planned from another start point) now shows in every build, as it always did in the release.
+- **No more warnings in Android's log.** MapsCtrl wrote a line to the phone's system log when a search file couldn't be opened or a search in it failed. Both lines are gone; nothing changes in how search behaves (a file that can't be read is still skipped, a failed search still finds nothing in that file).
+- **Log lines are stripped from the release build.** The release build already removed debug, verbose and info log lines; it now also removes warning, error and other log lines, so anything a library writes to Android's log, or a log line that sneaks in later, doesn't end up in the app you install.
+- Nothing else changes.
+
 ## v0.8.1 (2026-11-21)
 
 Built and checked by CI only: nothing in this release had been run on a phone when it was published.

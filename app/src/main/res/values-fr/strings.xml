@@ -156,7 +156,6 @@
     <string name="terrain_delete_title">Supprimer les données de relief pour %1$s ?</string>
     <string name="terrain_delete_body">L\'ombrage du relief ne s\'affiche plus dans cette zone. Les tuiles encore utilisées par une autre carte sont conservées.</string>
     <string name="nav_start">Démarrer</string>
-    <string name="nav_demo">Démo</string>
     <string name="nav_next">Suivant</string>
     <string name="nav_then">Puis</string>
     <string name="nav_waiting">En attente de la position</string>

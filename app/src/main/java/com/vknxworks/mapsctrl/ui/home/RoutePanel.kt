@@ -44,7 +44,6 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Place
-import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,7 +67,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.vknxworks.mapsctrl.BuildConfig
 import com.vknxworks.mapsctrl.R
 import com.vknxworks.mapsctrl.container
 import com.vknxworks.mapsctrl.nav.AlternativesState
@@ -113,7 +111,7 @@ fun RoutePanel(
     pickingStop: Boolean,
     onPickStop: () -> Unit,
     onAskLocation: () -> Unit,
-    onStart: (demo: Boolean) -> Unit,
+    onStart: () -> Unit,
 ) {
     val c = LocalContext.current.container
     val fmt = rememberFmt()
@@ -271,17 +269,8 @@ fun RoutePanel(
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        CtrlButton(stringResource(R.string.nav_start), onClick = { onStart(false) }, icon = Icons.Filled.Navigation, modifier = Modifier.weight(1f))
-                        if (BuildConfig.DEBUG) {
-                            CtrlSecondaryButton(onClick = { onStart(true) }, modifier = Modifier.heightIn(min = 56.dp)) {
-                                Icon(Icons.Outlined.PlayArrow, null, Modifier.size(20.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.nav_demo))
-                            }
-                        }
-                    }
-                    if (plan.start is RouteStart.At && !BuildConfig.DEBUG) {
+                    CtrlButton(stringResource(R.string.nav_start), onClick = onStart, icon = Icons.Filled.Navigation, modifier = Modifier.fillMaxWidth())
+                    if (plan.start is RouteStart.At) {
                         Text(stringResource(R.string.route_start_elsewhere), style = MaterialTheme.typography.bodySmall, color = CtrlColors.Muted, modifier = Modifier.padding(top = 8.dp))
                     }
                 }

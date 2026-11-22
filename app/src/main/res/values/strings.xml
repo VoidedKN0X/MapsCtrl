@@ -173,7 +173,6 @@
 
     <!-- Navigation -->
     <string name="nav_start">Start</string>
-    <string name="nav_demo">Demo</string>
     <string name="nav_next">Next</string>
     <string name="nav_then">Then</string>
     <string name="nav_waiting">Waiting for position</string>

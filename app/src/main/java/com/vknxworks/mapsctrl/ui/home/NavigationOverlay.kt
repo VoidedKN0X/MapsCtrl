@@ -105,7 +105,7 @@ fun NavigationOverlay(
                 state.follow -> stringResource(R.string.follow_label)
                 else -> stringResource(R.string.nav_next)
             }
-            CtrlHeroCard(label = label, meta = if (state.demo) stringResource(R.string.nav_demo) else null) {
+            CtrlHeroCard(label = label) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         if (state.rerouting) Icons.Outlined.Sync else turnIcon(hint?.kind ?: TurnKind.STRAIGHT),

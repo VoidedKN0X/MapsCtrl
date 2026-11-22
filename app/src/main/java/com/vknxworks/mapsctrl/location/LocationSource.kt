@@ -29,11 +29,7 @@ class LocationSource(private val context: Context) {
     private val users = HashSet<String>()
     private var listening: String? = null
 
-    /** Injected positions (debug builds' demo drive); while set, the real location is ignored. */
-    @Volatile var simulated: Boolean = false
-        private set
-
-    private val listener = LocationListener { loc -> if (!simulated) _fix.value = loc.toFix() }
+    private val listener = LocationListener { loc -> _fix.value = loc.toFix() }
 
     fun hasPermission(): Boolean =
         context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -58,7 +54,7 @@ class LocationSource(private val context: Context) {
         if (listening != null || !hasPermission()) return
         val p = provider() ?: return
         runCatching {
-            lm.getLastKnownLocation(p)?.let { if (_fix.value == null && !simulated) _fix.value = it.toFix() }
+            lm.getLastKnownLocation(p)?.let { if (_fix.value == null) _fix.value = it.toFix() }
             lm.requestLocationUpdates(p, 1000L, 0f, listener, Looper.getMainLooper())
             listening = p
         }
@@ -77,11 +73,6 @@ class LocationSource(private val context: Context) {
         val u = users.toList()
         if (listening != null) { runCatching { lm.removeUpdates(listener) }; listening = null }
         u.forEach { start(it) }
-    }
-
-    fun simulate(fix: Fix?) {
-        simulated = fix != null
-        if (fix != null) _fix.value = fix
     }
 
     private fun Location.toFix() = Fix(

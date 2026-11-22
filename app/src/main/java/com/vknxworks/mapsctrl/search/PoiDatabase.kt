@@ -111,7 +111,7 @@ class PoiDatabase(val file: File) : Closeable {
         }
         val cats = categoriesOf(list.map { it.id })
         list.map { it.copy(categories = cats[it.id].orEmpty()) }
-    }.onFailure { android.util.Log.w("PoiDatabase", "query failed: $sql", it) }.getOrDefault(emptyList())
+    }.getOrDefault(emptyList())
 
     private fun categoriesOf(ids: List<Long>): Map<Long, List<Int>> {
         if (ids.isEmpty()) return emptyMap()

@@ -9,7 +9,6 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.vknxworks.mapsctrl.R
 import com.vknxworks.mapsctrl.geo.ElevationProfile
-import com.vknxworks.mapsctrl.geo.Geo
 import com.vknxworks.mapsctrl.geo.LatLon
 import com.vknxworks.mapsctrl.location.Fix
 import com.vknxworks.mapsctrl.location.LocationSource
@@ -44,7 +43,6 @@ data class NavState(
     val rerouting: Boolean = false,
     val muted: Boolean = false,
     val waitingForLocation: Boolean = true,
-    val demo: Boolean = false,
     /** The stops still ahead, in order (a stop is dropped from the list when you reach it). */
     val stops: List<Place> = emptyList(),
     /** Following a saved track: no turn directions and no rerouting, statistics instead. */
@@ -74,7 +72,6 @@ class NavigationSession(
 
     private var tracker: NavigationTracker? = null
     private var follow: Job? = null
-    private var demoJob: Job? = null
     private var ntfyJob: Job? = null
     private var lastReroute = 0L
     private val warnedCameras = HashSet<Long>()
@@ -101,7 +98,6 @@ class NavigationSession(
     fun start(
         route: Route,
         destination: Place,
-        demo: Boolean = false,
         stops: List<Place> = emptyList(),
         followingTrack: Boolean = false,
         elevation: ElevationProfile? = ElevationProfile.of(route.points, route.elevations),
@@ -113,7 +109,7 @@ class NavigationSession(
         overSpeed = null
         offTrack = false
         _state.value = NavState(
-            route, destination, demo = demo, stops = stops, follow = followingTrack,
+            route, destination, stops = stops, follow = followingTrack,
             stats = TripStats(System.currentTimeMillis()), elevation = elevation,
         )
         initTts()
@@ -123,7 +119,6 @@ class NavigationSession(
         follow = scope.launch {
             location.fix.collect { fix -> if (fix != null) onFix(fix) }
         }
-        if (demo) startDemo(route)
         startNtfy()
     }
 
@@ -134,7 +129,7 @@ class NavigationSession(
      * the distance and estimated time left, your trip statistics and the climb ahead. There are no turn
      * directions and no rerouting; leaving the track is said once and shown until you're back on it.
      */
-    fun followTrack(track: SavedTrack, mode: TravelMode, demo: Boolean = false) {
+    fun followTrack(track: SavedTrack, mode: TravelMode) {
         val points = track.segments.flatten()
         if (points.size < 2) return
         val heights = track.flatElevations()
@@ -149,7 +144,7 @@ class NavigationSession(
             sections = emptyList(),
             elevations = if (heights.isNotEmpty() && heights.all { it != null }) heights.map { it!! } else emptyList(),
         )
-        start(route, Place(track.name, points.last()), demo = demo, followingTrack = true, elevation = ElevationProfile.of(points, heights))
+        start(route, Place(track.name, points.last()), followingTrack = true, elevation = ElevationProfile.of(points, heights))
     }
 
     /** Average speeds for the time left on a track, in m/s: 50, 25, 16 and 4.5 km/h. */
@@ -163,13 +158,11 @@ class NavigationSession(
     /** Ends navigation. [releaseVoice]: also let go of the text-to-speech engine (not when a new trip starts right away). */
     private fun end(releaseVoice: Boolean) {
         follow?.cancel()
-        demoJob?.cancel()
         ntfyJob?.cancel()
         follow = null
         val was = _state.value
         _state.value = null
         tracker = null
-        if (was?.demo == true) location.simulate(null)
         if (was != null) {
             location.stop("nav")
             NavigationService.stop(context)
@@ -287,7 +280,6 @@ class NavigationSession(
                 stopAlongs = Stops.alongs(r, left.map { it.point })
                 loadCameras(r)
                 _state.value = cur.copy(route = r, rerouting = false, progress = null, stops = left)
-                if (cur.demo) startDemo(r)
             } else {
                 _state.value = cur.copy(rerouting = false)
             }
@@ -377,30 +369,5 @@ class NavigationSession(
         val msg = if (arrived) context.getString(R.string.ntfy_arrived, s.destination.name)
         else context.getString(R.string.ntfy_eta, time, Instructions.displayDistance(words, p.distanceLeft, cfg.units))
         scope.launch { Ntfy.send(cfg.ntfyServer, cfg.ntfyTopic, title, msg) }
-    }
-
-    // ---------- Demo drive (debug builds) ----------
-
-    /** Moves a simulated position along the route, for testing navigation without the location permission. */
-    private fun startDemo(route: Route) {
-        demoJob?.cancel()
-        val speed = when (route.mode) { TravelMode.CAR -> 14.0; TravelMode.MOPED -> 6.9; TravelMode.BIKE -> 5.5; TravelMode.FOOT -> 1.6 }
-        demoJob = scope.launch {
-            val cum = route.cumulative
-            val total = cum.lastOrNull() ?: return@launch
-            var d = 0.0
-            var i = 0
-            while (isActive && d <= total) {
-                while (i < cum.size - 2 && cum[i + 1] < d) i++
-                val a = route.points[i]
-                val b = route.points[(i + 1).coerceAtMost(route.points.lastIndex)]
-                val seg = (cum[(i + 1).coerceAtMost(cum.lastIndex)] - cum[i]).coerceAtLeast(0.001)
-                val f = ((d - cum[i]) / seg).coerceIn(0.0, 1.0)
-                val pt = LatLon(a.lat + (b.lat - a.lat) * f, a.lon + (b.lon - a.lon) * f)
-                location.simulate(Fix(pt, 5f, Geo.bearing(a, b).toFloat(), speed.toFloat(), System.currentTimeMillis()))
-                delay(1000)
-                d += speed
-            }
-        }
     }
 }

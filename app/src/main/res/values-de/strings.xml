@@ -156,7 +156,6 @@
     <string name="terrain_delete_title">Geländedaten für %1$s löschen?</string>
     <string name="terrain_delete_body">Die Reliefschattierung wird in diesem Gebiet nicht mehr angezeigt. Kacheln, die eine andere Karte noch nutzt, bleiben erhalten.</string>
     <string name="nav_start">Start</string>
-    <string name="nav_demo">Demo</string>
     <string name="nav_next">Als Nächstes</string>
     <string name="nav_then">Dann</string>
     <string name="nav_waiting">Warte auf Standort</string>

@@ -348,11 +348,11 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
                     pickingStop = state.pickStop,
                     onPickStop = { state.pickStop = true; state.pickStart = false },
                     onAskLocation = ::askLocation,
-                    onStart = { demo ->
+                    onStart = {
                         val r = plan.chosen ?: return@RoutePanel
                         val dest = plan.destination ?: return@RoutePanel
-                        if (!demo && !hasPermission) { askLocation(); return@RoutePanel }
-                        c.navigation.start(r, dest, demo, plan.stops)
+                        if (!hasPermission) { askLocation(); return@RoutePanel }
+                        c.navigation.start(r, dest, plan.stops)
                         c.planner.close()
                         state.selected = null
                     },
@@ -372,7 +372,7 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
                     TAB_SAVED -> TabPage { SavedScreen(onShow = { p -> state.tab = TAB_MAP; state.selected = p; controller.moveTo(p.point, 16, lift = 0.22) }, onShowTrack = { pts -> state.tab = TAB_MAP; controller.fit(pts) }, onFollow = { t, mode ->
                         state.tab = TAB_MAP
                         state.selected = null
-                        if (!hasPermission && !com.vknxworks.mapsctrl.BuildConfig.DEBUG) askLocation() else c.navigation.followTrack(t, mode, demo = !hasPermission)
+                        if (!hasPermission) askLocation() else c.navigation.followTrack(t, mode)
                     }) }
                     TAB_DOWNLOADS -> TabPage { DownloadsScreen() }
                     TAB_MORE -> TabPage { MoreScreen(onGoTo = { p -> state.tab = TAB_MAP; state.selected = p; controller.moveTo(p.point, 16, lift = 0.22) }) }
