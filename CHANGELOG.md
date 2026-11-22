@@ -8,8 +8,6 @@ To publish a new version: bump `versionCode` and `versionName` in `app/build.gra
 
 Built and checked by CI only: nothing in this release had been run on a phone when it was published.
 
-Nothing here has been run on a phone yet: it was built and checked by CI only.
-
 ### Security
 
 - **App lock.** MapsCtrl now has the same app lock as the other Ctrl apps: **Settings > Privacy > App lock** (off by default) asks for an app PIN of 6 to 12 digits, separate from your phone's PIN, every time you open MapsCtrl. You can add fingerprint unlock (only strong biometrics; the PIN is still needed after a restart and at least every 72 hours), change the PIN, and choose under **Lock again** when it locks after you leave the app (as soon as you leave, after 1, 5 or 15 minutes, after 1 hour, or only when the app restarts). Wrong PINs make you wait: 30 seconds after 5 tries, doubling up to 15 minutes, also across restarts. While the lock or a PIN screen is showing, MapsCtrl can't be screenshotted, other apps' floating windows are hidden, and the recent apps view shows a blank card while the lock is on.
