@@ -296,7 +296,7 @@ private fun HomeContent(start: AppSettings, openedMaps: OpenedMaps?) {
         val q = Coordinates.geoUriQuery(uri)
         when {
             p != null && !(p.lat == 0.0 && p.lon == 0.0) -> {
-                val label = uri.substringAfter('(', "").substringBefore(')').takeIf { it.isNotBlank() }
+                val label = Coordinates.geoUriLabel(uri)
                 state.selected = Place(label ?: p.format(), p)
                 controller.moveTo(p, 16, lift = 0.22)
             }

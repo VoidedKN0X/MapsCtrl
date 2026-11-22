@@ -4,6 +4,33 @@ What changed in each MapsCtrl release. Every release on the [Releases page](http
 
 To publish a new version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, add a section here, and push to `main`. Pushes without a version bump only build; they don't make a release.
 
+## Unreleased
+
+Nothing here has been run on a phone yet: it was built and checked by CI only.
+
+### Security
+
+- **App lock.** MapsCtrl now has the same app lock as the other Ctrl apps: **Settings > Privacy > App lock** (off by default) asks for an app PIN of 6 to 12 digits, separate from your phone's PIN, every time you open MapsCtrl. You can add fingerprint unlock (only strong biometrics; the PIN is still needed after a restart and at least every 72 hours), change the PIN, and choose under **Lock again** when it locks after you leave the app (as soon as you leave, after 1, 5 or 15 minutes, after 1 hour, or only when the app restarts). Wrong PINs make you wait: 30 seconds after 5 tries, doubling up to 15 minutes, also across restarts. While the lock or a PIN screen is showing, MapsCtrl can't be screenshotted, other apps' floating windows are hidden, and the recent apps view shows a blank card while the lock is on.
+- **The lock covers the screens only.** Navigation keeps going while MapsCtrl is locked: the navigation notification, spoken directions, rerouting, the speed warnings, track recording and ETA sharing all carry on. Unlocking takes you back to the map (with the navigation still running); the map is set up again after each unlock.
+- **Forgot PIN?** on the lock screen first asks for your phone's own screen lock (PIN, pattern, password or fingerprint), so someone who only has your unlocked phone in hand can't reset it. If your phone has no screen lock, the confirmation dialog alone is used. Resetting **deletes your saved places (Home and Work included), tracks and recent searches**, resets MapsCtrl's settings (the ETA sharing server and topic too) and turns the lock off. Downloaded maps, search, routing and terrain data stay. The dialog says so before you confirm.
+- **Hide in recent apps** is new under **Settings > Privacy** (off by default, like **Hide in screenshots**): the recent apps view shows a blank card instead of the map.
+- **MapsCtrl starts hidden from screenshots** until your saved settings have been read (a fraction of a second), so "Hide in screenshots" can't miss the first frames after a start.
+- **Restoring a settings file can only make privacy stricter.** A file can now never turn ETA sharing on (only off), and if it has a different ntfy server than this phone, ETA sharing is turned off so your topic and arrival times never go to a server you haven't checked; the confirmation now shows that new server in full. Turn sharing on again in Settings after checking it. "Hide in screenshots" and the new "Hide in recent apps" can only be turned on by a file, "Keep recent searches" only off, and the app lock's "Lock again" time only made shorter. The app lock itself and its PIN are never in a settings file. Files made by this version also contain "Hide in recent apps" and "Lock again".
+
+### Fixed
+
+- **A broken `geo:` link can no longer close MapsCtrl.** A link from another app or a web page with a stray `%` in it (for example `geo:0,0?q=100%` or a search text like "50% korting") made MapsCtrl close straight away. Such links now open normally: valid parts are read, and anything that isn't valid is kept as typed.
+- **ETA sharing now works for every destination.** A destination name with accents or emoji ("Liège", "Café …", "Dübendorf") made every ETA message fail without any message on screen, because Android refuses non-ASCII text in the way the title was sent. The title now goes along in the request's address, which ntfy reads the same way, so the message arrives with the right title. **Send a test message** in Settings uses the same way.
+- **Map downloads keep going when you leave the app.** A map, search data, routing data or terrain download used to stop or fail (timeout) once MapsCtrl was in the background or the screen turned off. While a download runs MapsCtrl now shows a **Downloading maps** notification with the progress, and Android lets the download finish in the background. The notification goes away a moment after the last download ends. Android 15 limits this kind of background work to 6 hours a day; after that it stops. If you haven't allowed MapsCtrl's notifications, Android may only show it in the list of running apps in the quick settings.
+- **A continued download can no longer mix two versions of a file.** When a download was interrupted and continued later, and download.mapsforge.org or brouter.de had published a new version in between, the new file's end could be glued to the old file's start, giving a broken map or routing file. MapsCtrl now remembers which version a partial download is and only continues it when the server still has that version; otherwise it starts over.
+- **Place names from LijnCtrl's walk hand-off show properly.** A name like "Gent Sint-Pieters" showed as `Gent%20Sint-Pieters` on the pin, and a name with brackets such as "Station (perron 5)" was cut off at the first ")". Both now show in full.
+- **The notification says "Recording a track" again after navigation ends.** When you stopped navigating while recording a track with MapsCtrl in the background, the notification kept saying "Navigating". It now switches to "Recording a track".
+
+### Changed
+
+- **Recent searches are saved less often.** Each place you picked from search used to write and re-encrypt the whole saved-places file (all places and all recorded tracks) straight away. The recent list still updates on screen immediately, but the file is now written 5 seconds later (once for several picks in a row), with the next other change, or when you leave the app. Nothing changes in how the list looks or where it's kept.
+- **Settings** on the You page now mentions the app lock in its description, and **Privacy** in Settings has the app lock rows, Hide in screenshots, Hide in recent apps and recent searches together.
+
 ## v0.8.2 (2026-11-22)
 
 Built and checked by CI only: nothing in this release had been run on a phone when it was published.

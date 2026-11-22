@@ -4,6 +4,7 @@ import com.vknxworks.mapsctrl.routing.TravelMode
 import com.vknxworks.mapsctrl.routing.Units
 import com.vknxworks.mapsctrl.settings.AppSettings
 import com.vknxworks.mapsctrl.settings.BackupFormatException
+import com.vknxworks.mapsctrl.settings.LockTimeout
 import com.vknxworks.mapsctrl.settings.SettingsBackups
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,7 +26,9 @@ class SettingsBackupTest {
         assertEquals(Units.IMPERIAL, restored.units)
         assertEquals(TravelMode.MOPED, restored.travelMode)
         assertEquals("other", restored.ntfyTopic)
-        assertTrue(restored.ntfyEnabled)
+        assertEquals("https://ntfy.example.org", restored.ntfyServer)
+        // A file never turns ETA sharing on; and here the server changed too.
+        assertFalse(restored.ntfyEnabled)
         assertTrue(restored.avoidFerries)
         assertEquals(3, restored.overSpeedMargin)
         assertEquals(AppSettings().lastLat, restored.lastLat, 0.0)
@@ -58,5 +61,51 @@ class SettingsBackupTest {
     fun badValuesAreIgnored() {
         val b = SettingsBackups.parse("""{"app":"MapsCtrl","format":1,"settings":{"units":"PARSECS","overSpeedMargin":99,"ntfyServer":"http://plain.example"}}""")
         assertEquals(AppSettings(), SettingsBackups.apply(b, AppSettings()))
+    }
+
+    @Test
+    fun differentServerTurnsSharingOffAndIsListed() {
+        val here = mine
+        val b = SettingsBackups.parse("""{"app":"MapsCtrl","format":1,"settings":{"ntfyServer":"https://evil.example","ntfyEnabled":true}}""")
+        val next = SettingsBackups.apply(b, here)
+        assertEquals("https://evil.example", next.ntfyServer)
+        assertFalse(next.ntfyEnabled)
+        assertEquals("secret-topic", next.ntfyTopic)
+        assertEquals(listOf("ntfy_server"), SettingsBackups.changes(b, here))
+    }
+
+    @Test
+    fun sameServerKeepsSharingOnButAFileCanNeverTurnItOn() {
+        val same = SettingsBackups.parse("""{"app":"MapsCtrl","format":1,"settings":{"ntfyServer":"https://ntfy.example.org","ntfyEnabled":true}}""")
+        assertTrue(SettingsBackups.apply(same, mine).ntfyEnabled)
+        assertFalse(SettingsBackups.apply(same, mine.copy(ntfyEnabled = false)).ntfyEnabled)
+        val off = SettingsBackups.parse("""{"app":"MapsCtrl","format":1,"settings":{"ntfyEnabled":false}}""")
+        assertFalse(SettingsBackups.apply(off, mine).ntfyEnabled)
+        assertEquals(listOf("ntfy"), SettingsBackups.changes(off, mine))
+    }
+
+    @Test
+    fun lockAndPrivacyOnlyGetStricter() {
+        val loose = SettingsBackups.parse(
+            """{"app":"MapsCtrl","format":1,"settings":{"hideRecents":false,"hideScreenshots":false,"lockTimeout":"RESTART","keepRecentSearches":true}}""",
+        )
+        val strictHere = AppSettings(hideRecents = true, hideScreenshots = true, lockTimeout = LockTimeout.MINUTE_1, keepRecentSearches = false)
+        assertEquals(strictHere, SettingsBackups.apply(loose, strictHere))
+
+        val strict = SettingsBackups.parse(
+            """{"app":"MapsCtrl","format":1,"settings":{"hideRecents":true,"lockTimeout":"IMMEDIATELY","keepRecentSearches":false}}""",
+        )
+        val next = SettingsBackups.apply(strict, AppSettings(lockTimeout = LockTimeout.HOUR_1))
+        assertTrue(next.hideRecents)
+        assertEquals(LockTimeout.IMMEDIATELY, next.lockTimeout)
+        assertFalse(next.keepRecentSearches)
+        assertEquals(listOf("hide_recents", "lock_timeout", "recent"), SettingsBackups.changes(strict, AppSettings(lockTimeout = LockTimeout.HOUR_1)))
+    }
+
+    @Test
+    fun exportHasLockTimeoutButNoPin() {
+        val text = SettingsBackups.export(AppSettings(lockTimeout = LockTimeout.MINUTES_5, hideRecents = true), "1.0", "x")
+        assertTrue(text.contains("MINUTES_5"))
+        assertFalse(text.contains("pin", ignoreCase = true))
     }
 }

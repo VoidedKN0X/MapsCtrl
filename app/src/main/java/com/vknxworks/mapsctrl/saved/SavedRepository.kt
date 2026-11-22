@@ -9,6 +9,9 @@ import com.vknxworks.mapsctrl.geo.LatLon
 import com.vknxworks.mapsctrl.search.Place
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -251,6 +254,9 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
         lock.withLock {
             if (_unreadable.value) return@withLock
             block()
+            // This write also takes a waiting recent-search change along.
+            recentWrite?.let { if (it != currentCoroutineContext()[Job]) it.cancel() }
+            recentWrite = null
             write()
         }
     }
@@ -284,14 +290,47 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
         _places.value = _places.value.map { if (it.role == role) it.copy(role = null) else it }
     }
 
-    /** Puts a place you picked in search at the top of the recent list (at most [MAX_RECENT]). */
-    suspend fun addRecent(place: Place) = change {
-        val p = place.copy(savedId = null)
-        _recent.value = (listOf(p) + _recent.value.filterNot { it.name == p.name && it.point == p.point }).take(MAX_RECENT)
+    /** A recent-search write waiting to happen (see [addRecent]). */
+    private var recentWrite: Job? = null
+
+    /**
+     * Puts a place you picked in search at the top of the recent list (at most [MAX_RECENT]). The list shows the
+     * change straight away; the file (all places and tracks, encrypted) is written [RECENT_WRITE_DELAY_MS] later,
+     * once for several picks in a row, or sooner with any other change, [flushRecent] or [clearRecent].
+     */
+    suspend fun addRecent(place: Place) {
+        awaitReady()
+        lock.withLock {
+            if (_unreadable.value) return
+            val p = place.copy(savedId = null)
+            _recent.value = (listOf(p) + _recent.value.filterNot { it.name == p.name && it.point == p.point }).take(MAX_RECENT)
+            recentWrite?.cancel()
+            recentWrite = scope.launch {
+                delay(RECENT_WRITE_DELAY_MS)
+                flushRecent()
+            }
+        }
+    }
+
+    /** Writes a waiting recent-search change now (when the app goes to the background). */
+    suspend fun flushRecent() {
+        if (recentWrite == null) return
+        change { }
     }
 
     /** Forgets every recent search. */
     suspend fun clearRecent() = change {
+        _recent.value = emptyList()
+    }
+
+    /**
+     * "Forgot PIN?" on the app lock: every saved place, track and recent search is deleted (the file is written
+     * empty, encrypted as before). A file that can't be opened is left as it is: nobody can read it anyway, and
+     * files that can't be opened are never written over.
+     */
+    suspend fun deleteAll() = change {
+        _places.value = emptyList()
+        _tracks.value = emptyList()
         _recent.value = emptyList()
     }
 
@@ -346,5 +385,6 @@ class SavedRepository(private val context: Context, private val scope: Coroutine
         const val TMP = "saved.json.tmp"
         const val ASIDE = "saved.json.unreadable"
         const val MAX_RECENT = 15
+        const val RECENT_WRITE_DELAY_MS = 5_000L
     }
 }

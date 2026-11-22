@@ -52,4 +52,35 @@ class CoordinatesTest {
         assertNull(Coordinates.parse("Avenue de la Madone 4"))
         assertNull(Coordinates.parse(""))
     }
+
+    @Test
+    fun malformedGeoUrisNeverThrow() {
+        // A stray or incomplete "%" used to throw from URLDecoder and close the app.
+        assertNull(Coordinates.parse("geo:0,0?q=100%"))
+        assertNull(Coordinates.parse("geo:0,0?q=%zz"))
+        assertEquals("100%", Coordinates.geoUriQuery("geo:0,0?q=100%"))
+        assertEquals("50% korting", Coordinates.geoUriQuery("geo:0,0?q=50%25+korting"))
+        assertEquals("%zz caf\u00e9", Coordinates.geoUriQuery("geo:0,0?q=%zz+caf%C3%A9"))
+        assertEquals("50% korting", Coordinates.geoUriQuery("geo:0,0?q=50% korting"))
+    }
+
+    @Test
+    fun percentDecode() {
+        assertEquals("a b", Coordinates.percentDecode("a+b", plusAsSpace = true))
+        assertEquals("a+b", Coordinates.percentDecode("a+b", plusAsSpace = false))
+        assertEquals("Li\u00e8ge", Coordinates.percentDecode("Li%C3%A8ge", plusAsSpace = false))
+        assertEquals("%", Coordinates.percentDecode("%", plusAsSpace = true))
+        assertEquals("%4", Coordinates.percentDecode("%4", plusAsSpace = true))
+        assertEquals("x%G1", Coordinates.percentDecode("x%G1", plusAsSpace = true))
+    }
+
+    @Test
+    fun geoUriLabel() {
+        assertEquals("Gent Sint-Pieters", Coordinates.geoUriLabel("geo:51.03,3.71?q=51.03,3.71(Gent%20Sint-Pieters)"))
+        assertEquals("Station (perron 5)", Coordinates.geoUriLabel("geo:51.03,3.71?q=51.03,3.71(Station%20(perron%205))"))
+        assertEquals("Station (perron 5)", Coordinates.geoUriLabel("geo:51.03,3.71?q=51.03,3.71(Station%20%28perron%205%29)"))
+        assertEquals("100%", Coordinates.geoUriLabel("geo:51.03,3.71?q=51.03,3.71(100%)"))
+        assertNull(Coordinates.geoUriLabel("geo:51.03,3.71"))
+        assertNull(Coordinates.geoUriLabel("geo:51.03,3.71?q=51.03,3.71()"))
+    }
 }

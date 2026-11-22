@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import com.vknxworks.mapsctrl.BuildConfig
 import com.vknxworks.mapsctrl.R
 import com.vknxworks.mapsctrl.container
+import com.vknxworks.mapsctrl.ui.lock.AppLock
 import com.vknxworks.mapsctrl.settings.BackupFormatException
 import com.vknxworks.mapsctrl.settings.SettingsBackup
 import com.vknxworks.mapsctrl.settings.SettingsBackups
@@ -85,9 +86,11 @@ fun BackupGroup() {
 
     Group(stringResource(R.string.backup_title), footer = stringResource(R.string.backup_footer)) {
         GroupRow(stringResource(R.string.backup_save), stringResource(R.string.backup_save_sub), Icons.Outlined.FileDownload, onClick = {
+            AppLock.expectReturn()
             save.launch("mapsctrl-settings-${LocalDate.now()}.json")
         })
         GroupRow(stringResource(R.string.backup_restore), stringResource(R.string.backup_restore_sub), Icons.Outlined.FileUpload, onClick = {
+            AppLock.expectReturn()
             open.launch(arrayOf("application/json", "text/*", "application/octet-stream"))
         })
     }
@@ -95,7 +98,12 @@ fun BackupGroup() {
     pending?.let { b ->
         val current = c.settings.settings.value
         val changes = SettingsBackups.changes(b, current)
-        val names = changes.map { stringResource(keyLabel(it)) }
+        val next = SettingsBackups.apply(b, current)
+        val names = changes.map {
+            // A different ETA sharing server is shown in full: sharing turns off until you've checked it.
+            if (it == "ntfy_server") stringResource(R.string.backup_ntfy_server_changed, next.ntfyServer.ifEmpty { "–" })
+            else stringResource(keyLabel(it))
+        }
         ConfirmDialog(
             stringResource(R.string.backup_restore_title),
             if (names.isEmpty()) stringResource(R.string.backup_restore_same, b.createdAt?.take(10) ?: "?")
@@ -127,6 +135,8 @@ private fun keyLabel(key: String): Int = when (key) {
     "ntfy" -> R.string.ntfy_title_setting
     "keep_screen_on" -> R.string.keep_screen_on
     "hide_screenshots" -> R.string.hide_screenshots
+    "hide_recents" -> R.string.hide_recents
+    "lock_timeout" -> R.string.lock_again
     "hillshading" -> R.string.hillshading
     "transit" -> R.string.transit_setting
     "avoid" -> R.string.route_options

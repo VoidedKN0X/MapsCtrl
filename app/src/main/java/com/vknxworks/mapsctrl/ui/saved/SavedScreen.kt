@@ -41,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vknxworks.mapsctrl.R
+import com.vknxworks.mapsctrl.ui.lock.AppLock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -190,8 +191,8 @@ fun SavedScreen(onShow: (Place) -> Unit, onShowTrack: (List<LatLon>) -> Unit, on
         }
 
         Row(Modifier.fillMaxWidth().padding(horizontal = Gutter, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CtrlButton(stringResource(R.string.gpx_import), onClick = { importer.launch(arrayOf("application/gpx+xml", "application/xml", "text/xml", "application/octet-stream", "*/*")) }, icon = Icons.Outlined.FileDownload, modifier = Modifier.weight(1f))
-            CtrlSecondaryButton(onClick = { exportOnly = null; exporter.launch("MapsCtrl.gpx") }, enabled = places.isNotEmpty() || tracks.isNotEmpty(), modifier = Modifier.weight(1f).height(56.dp)) {
+            CtrlButton(stringResource(R.string.gpx_import), onClick = { AppLock.expectReturn(); importer.launch(arrayOf("application/gpx+xml", "application/xml", "text/xml", "application/octet-stream", "*/*")) }, icon = Icons.Outlined.FileDownload, modifier = Modifier.weight(1f))
+            CtrlSecondaryButton(onClick = { exportOnly = null; AppLock.expectReturn(); exporter.launch("MapsCtrl.gpx") }, enabled = places.isNotEmpty() || tracks.isNotEmpty(), modifier = Modifier.weight(1f).height(56.dp)) {
                 Icon(Icons.Outlined.FileUpload, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.gpx_export))

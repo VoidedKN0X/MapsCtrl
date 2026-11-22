@@ -146,7 +146,7 @@ class TerrainRepository(private val context: Context, private val scope: Corouti
         scope.launch(Dispatchers.IO) {
             try {
                 dir.mkdirs()
-                dir.listFiles()?.filter { it.name.endsWith(".part") }?.forEach { it.delete() }
+                dir.listFiles()?.filter { Http.isPartial(it) }?.forEach { it.delete() }
                 refresh()
             } finally {
                 _ready.value = true
@@ -242,7 +242,7 @@ class TerrainRepository(private val context: Context, private val scope: Corouti
                             if (!part.renameTo(dest)) throw IOException("Couldn't save $t")
                         } finally {
                             gz.delete()
-                            File(gz.path + ".part").delete()
+                            Http.discardPartial(gz)
                         }
                     }
                     _job.value = TerrainJob.Running(c.mapPath, i + 1, c.tiles.size, bytes)
@@ -254,7 +254,7 @@ class TerrainRepository(private val context: Context, private val scope: Corouti
             } catch (e: Exception) {
                 _job.value = TerrainJob.Failed(c.mapPath, e.message ?: e.javaClass.simpleName)
             } finally {
-                dir.listFiles()?.filter { it.name.endsWith(".part") }?.forEach { it.delete() }
+                dir.listFiles()?.filter { Http.isPartial(it) }?.forEach { it.delete() }
                 refresh()
             }
         }

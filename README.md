@@ -37,7 +37,9 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 - **Follow a GPX track:** follow an imported or recorded track like a route, with the distance and time left, the distance ridden, moving time, average and top speed, how far along you are and the climb still ahead. No turn directions or rerouting; leaving the track is said once
 - **Over-speed alert** (off by default): a beep and a spoken warning while navigating when you go faster than the road's limit plus a margin you choose. On a moped the limit is never more than 25 km/h
 - **Share your ETA with ntfy** (off by default): while navigating, your arrival time and the distance left go to an ntfy topic on a server you choose. Never your position
-- **Back up and restore settings** to a JSON file you pick: settings only, without your ntfy topic or where the map was last; restoring shows what will change and asks first
+- **App lock** (off by default): an app PIN of 6 to 12 digits, optionally with your fingerprint, and a choice of when it locks again. It covers MapsCtrl's screens (saved places, Home and Work, tracks, recent searches); navigation, spoken directions, track recording and ETA sharing keep running while it's locked. **Forgot PIN?** asks for your phone's own screen lock first, then deletes your saved places, tracks and recent searches and resets the settings (downloaded maps stay). Also **Hide in screenshots** and **Hide in recent apps** (both off by default)
+- **Downloads keep going in the background:** while a map, search, routing or terrain download runs, a "Downloading maps" notification keeps it going when you leave the app or the screen turns off
+- **Back up and restore settings** to a JSON file you pick: settings only, without your ntfy topic, the app lock or where the map was last; restoring shows what will change and asks first, and can only make privacy and the lock stricter (it never turns ETA sharing on, a different ntfy server turns sharing off, and the hide switches and lock timeout only get stricter)
 - **Opens `geo:` links** from other apps
 - **English, Dutch, French and German:** MapsCtrl follows your phone's language (Dutch in informal "je", for Belgium and the Netherlands; French in "vous"; German in "du"); other languages get English. Spoken directions use the same language when your phone's text-to-speech has a voice for it
 - **Ctrl / Signal look:** dark and light, following your phone, one violet accent, Space Grotesk and JetBrains Mono
@@ -72,7 +74,7 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 - **Navigate:** **Start**. Tap the speaker to mute, **End** to stop.
 - **Hillshading:** the layers button on the map. Download terrain data for your maps under **Downloads > Terrain data**.
 - **Follow a track:** tab **Saved**, tap a track, pick how you travel and **Follow**. The same sheet shows its elevation profile.
-- **Settings** (profile picture, top right): units, map colours, voice, speed limit and camera warnings, over-speed alert, public transport, ETA sharing, recent searches.
+- **Settings** (profile picture, top right): units, map colours, voice, speed limit and camera warnings, over-speed alert, public transport, ETA sharing, and under **Privacy** the app lock, Hide in screenshots, Hide in recent apps and recent searches.
 
 ## Is it safe to install?
 
@@ -99,6 +101,9 @@ Part of the [Ctrl series](#the-ctrl-series) by VKNXWorks.
 | Internet | Only for downloads you start (maps, search data, routing data, terrain data), public transport routes you ask for (Transitous) and, if you turn it on, ETA sharing to your ntfy server. Search, car/bike/foot routing and navigation work offline. |
 | Location (*you allow it*) | Your position on the map, navigation and track recording. It stays on the phone. MapsCtrl never asks for background location. |
 | Foreground service (location) | Keeps navigation and track recording going with the screen off, with a notification while it runs. |
+| Foreground service (data sync) | Keeps a map, search, routing or terrain download you started going when you leave the app, with a "Downloading maps" notification while it runs. |
+| Biometrics | Unlocking the app lock with your fingerprint, if you turn that on. |
+| Hide other apps' overlays | Keeps other apps' floating windows off the lock and PIN screens. |
 | App-internal broadcasts (`com.vknxworks.mapsctrl.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`) | Added by AndroidX so that only MapsCtrl itself can send to its own internal receivers. |
 
 See [Privacy](#privacy) for what happens to your data.
@@ -115,12 +120,13 @@ MapsCtrl connects to these servers, and only when you start it:
 | `brouter.de` | A route needs routing data and you tap **Download** | The same: the list of tiles, then the tiles you agreed to |
 | `elevation-tiles-prod.s3.amazonaws.com` | You tap **Download** for a map's terrain data (hillshading) | The size check and the elevation tiles you agreed to. No location beyond which 1° tiles you download |
 | `api.transitous.org` | Only when you pick **Transit** in route planning, and when you change the start, destination or time while it's picked | Your start and destination points (rounded to about 1 m) and the time you chose, nothing else. The user agent names MapsCtrl, its version and this repo's URL, as Transitous asks of apps. To hide Transit completely: **Settings > Public transport** |
-| Your ntfy server | Only with **Share my ETA** on, while navigating, and for **Send a test message** | Your destination's name, arrival time and distance left, to the topic you set |
+| Your ntfy server | Only with **Share my ETA** on, while navigating, and for **Send a test message** | Your destination's name (as the message title, in the request's address), arrival time and distance left, to the topic you set, over HTTPS |
 
 - Search, car/bike/foot routes and navigation run on the phone. MapsCtrl never sends what you search for or where you go; the one exception is a public transport search, which you start yourself and which sends only the two points and the time to Transitous ([its privacy policy](https://transitous.org/privacy/)).
 - No map tiles or geocoding from online services, and no car, bike or foot routing from them.
 - Your maps, saved places, tracks and settings are stored in MapsCtrl's private storage and can't be read by other apps. Android backups don't include them.
 - Your saved places and tracks are also encrypted in that storage (AES-256-GCM, with a key that's protected by the phone's secure hardware and never leaves the phone), so a copy of MapsCtrl's files taken off the phone doesn't show them. Downloaded maps, search, routing and terrain data and your settings are not encrypted. GPX exports are ordinary files: keep them somewhere safe yourself. Because the key stays on the phone, an older version of MapsCtrl can't read the encrypted file; export to GPX before going back to one.
+- With the **app lock** on, MapsCtrl's screens stay covered until you enter your app PIN (or fingerprint). The PIN itself is never stored: it's checked with a slow key derivation and a key in the phone's secure hardware, and wrong PINs make you wait longer and longer. The lock covers the screens only; navigation, the navigation notification and ETA sharing go on while locked.
 - The Support, Report a bug, Source code and Licence links, and websites on a place sheet, open in your browser only when you tap them.
 
 ## How MapsCtrl is made

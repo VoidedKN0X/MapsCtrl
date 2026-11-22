@@ -90,8 +90,8 @@ class MapRepository(private val context: Context, private val scope: CoroutineSc
             // Drop entries whose file is gone, and clean up half-finished downloads.
             _installed.value = runCatching { list.filter { mapFile(it.path).exists() } }.getOrDefault(emptyList())
             _ready.value = true
-            mapsDir.listFiles()?.filter { it.name.endsWith(".part") }?.forEach { it.delete() }
-            poiDir.listFiles()?.filter { it.name.endsWith(".part") }?.forEach { it.delete() }
+            mapsDir.listFiles()?.filter { Http.isPartial(it) }?.forEach { it.delete() }
+            poiDir.listFiles()?.filter { Http.isPartial(it) }?.forEach { it.delete() }
         }
     }
 
@@ -188,8 +188,8 @@ class MapRepository(private val context: Context, private val scope: CoroutineSc
                 _updates.update { it - item.path }
                 _downloads.update { it - item.path }
             } catch (e: CancellationException) {
-                File(mapFile(item.path).path + ".part").delete()
-                File(poiFile(item.path).path + ".part").delete()
+                Http.discardPartial(mapFile(item.path))
+                Http.discardPartial(poiFile(item.path))
                 _downloads.update { it - item.path }
             } catch (e: Exception) {
                 _downloads.update { it + (item.path to DownloadState.Failed(e.message ?: e.javaClass.simpleName)) }
@@ -214,8 +214,8 @@ class MapRepository(private val context: Context, private val scope: CoroutineSc
         cancelled += path
         jobs[path]?.cancel()
         _downloads.update { it - path }
-        File(mapFile(path).path + ".part").delete()
-        File(poiFile(path).path + ".part").delete()
+        Http.discardPartial(mapFile(path))
+        Http.discardPartial(poiFile(path))
     }
 
     fun dismissError(path: String) = _downloads.update { it - path }

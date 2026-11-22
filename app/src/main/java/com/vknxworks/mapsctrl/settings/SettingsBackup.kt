@@ -8,7 +8,7 @@ import kotlinx.serialization.json.Json
 /**
  * A settings file: MapsCtrl's settings as JSON, to keep or to move to another phone. Pure logic, unit-tested.
  *
- * Left out on purpose: the ntfy topic (anyone who knows it can read and post to it, so it's treated like a
+ * Left out on purpose: the app lock and its PIN, the ntfy topic (anyone who knows it can read and post to it, so it's treated like a
  * password), and where the map was last (your position). Saved places, tracks, recent searches and downloaded
  * maps are not settings and are not in it (places and tracks go to GPX in Saved).
  */
@@ -41,6 +41,10 @@ data class BackupSettings(
     val ntfyServer: String? = null,
     val keepScreenOn: Boolean? = null,
     val hideScreenshots: Boolean? = null,
+    /** Restoring can only turn this on, never off. */
+    val hideRecents: Boolean? = null,
+    /** App lock timeout; restoring can only make it shorter. The lock itself and its PIN are never in the file. */
+    val lockTimeout: String? = null,
     val hillshading: Boolean? = null,
     val transitEnabled: Boolean? = null,
     val avoidTolls: Boolean? = null,
@@ -76,6 +80,8 @@ object SettingsBackups {
                 ntfyServer = s.ntfyServer,
                 keepScreenOn = s.keepScreenOn,
                 hideScreenshots = s.hideScreenshots,
+                hideRecents = s.hideRecents,
+                lockTimeout = s.lockTimeout.name,
                 hillshading = s.hillshading,
                 transitEnabled = s.transitEnabled,
                 avoidTolls = s.avoidTolls,
@@ -103,9 +109,13 @@ object SettingsBackups {
     }
 
     /**
-     * The settings after applying [b] to [current]. Unknown names and values out of range are ignored. Two
-     * things a file can never do: turn "Hide in screenshots" off (only on), and turn ETA sharing on when this
-     * phone has no ntfy topic set up (the topic isn't in the file).
+     * The settings after applying [b] to [current]. Unknown names and values out of range are ignored. A file can
+     * only make privacy and the app lock stricter, never weaker:
+     * - "Hide in screenshots" and "Hide in recent apps" can only be turned on, the lock timeout only made shorter;
+     * - ETA sharing can only be turned off by a file, never on;
+     * - a different ntfy server turns ETA sharing off, so your topic and ETA never go to a server you haven't
+     *   checked (you turn it on again in Settings);
+     * - "Keep recent searches" can only be turned off.
      */
     fun apply(b: SettingsBackup, current: AppSettings): AppSettings {
         val f = b.settings
@@ -118,9 +128,14 @@ object SettingsBackups {
         f.speedLimit?.let { s = s.copy(speedLimit = it) }
         f.withSearchData?.let { s = s.copy(withSearchData = it) }
         f.ntfyServer?.let { v -> if (v.isEmpty() || v.startsWith("https://")) s = s.copy(ntfyServer = v.trim().take(300)) }
-        f.ntfyEnabled?.let { on -> s = s.copy(ntfyEnabled = on && s.ntfyTopic.isNotBlank() && s.ntfyServer.isNotBlank()) }
+        if (f.ntfyEnabled == false) s = s.copy(ntfyEnabled = false)
+        if (s.ntfyServer != current.ntfyServer) s = s.copy(ntfyEnabled = false)
         f.keepScreenOn?.let { s = s.copy(keepScreenOn = it) }
         if (f.hideScreenshots == true) s = s.copy(hideScreenshots = true)
+        if (f.hideRecents == true) s = s.copy(hideRecents = true)
+        f.lockTimeout?.let { n -> LockTimeout.entries.firstOrNull { it.name == n } }?.let { t ->
+            if (t.ordinal < s.lockTimeout.ordinal) s = s.copy(lockTimeout = t)
+        }
         f.hillshading?.let { s = s.copy(hillshading = it) }
         f.transitEnabled?.let { s = s.copy(transitEnabled = it) }
         f.avoidTolls?.let { s = s.copy(avoidTolls = it) }
@@ -129,7 +144,7 @@ object SettingsBackups {
         f.avoidFerries?.let { s = s.copy(avoidFerries = it) }
         f.overSpeedAlert?.let { s = s.copy(overSpeedAlert = it) }
         f.overSpeedMargin?.takeIf { it in 0..20 }?.let { s = s.copy(overSpeedMargin = it) }
-        f.keepRecentSearches?.let { s = s.copy(keepRecentSearches = it) }
+        if (f.keepRecentSearches == false) s = s.copy(keepRecentSearches = false)
         return s
     }
 
@@ -144,9 +159,13 @@ object SettingsBackups {
             if (next.speedCameras != current.speedCameras) add("speed_cameras")
             if (next.speedLimit != current.speedLimit) add("speed_limit")
             if (next.withSearchData != current.withSearchData) add("search_data")
-            if (next.ntfyEnabled != current.ntfyEnabled || next.ntfyServer != current.ntfyServer) add("ntfy")
+            // A new server is listed on its own, with the server, in the confirmation.
+            if (next.ntfyServer != current.ntfyServer) add("ntfy_server")
+            else if (next.ntfyEnabled != current.ntfyEnabled) add("ntfy")
             if (next.keepScreenOn != current.keepScreenOn) add("keep_screen_on")
             if (next.hideScreenshots != current.hideScreenshots) add("hide_screenshots")
+            if (next.hideRecents != current.hideRecents) add("hide_recents")
+            if (next.lockTimeout != current.lockTimeout) add("lock_timeout")
             if (next.hillshading != current.hillshading) add("hillshading")
             if (next.transitEnabled != current.transitEnabled) add("transit")
             if (next.avoid != current.avoid) add("avoid")

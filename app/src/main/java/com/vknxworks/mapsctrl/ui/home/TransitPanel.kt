@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vknxworks.mapsctrl.R
+import com.vknxworks.mapsctrl.ui.lock.AppLock
 import com.vknxworks.mapsctrl.container
 import com.vknxworks.mapsctrl.nav.PlanState
 import com.vknxworks.mapsctrl.nav.RouteStart
@@ -304,6 +305,7 @@ private fun Credit() {
             .clip(RoundedCornerShape(6.dp))
             .clickable(role = Role.Button) {
                 try {
+                    AppLock.expectReturn()
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SOURCES_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 } catch (_: ActivityNotFoundException) {
                 }

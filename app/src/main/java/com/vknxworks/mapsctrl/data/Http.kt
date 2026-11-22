@@ -100,23 +100,47 @@ object Http {
     /**
      * Downloads [url] to [dest]: into "<dest>.part" first (continuing a partial file when the server allows it),
      * renamed to [dest] only when complete. [progress] gets (bytes so far, total or -1).
+     *
+     * A partial file is only continued with `If-Range` and the version it started from (its ETag or
+     * Last-Modified, kept in "<dest>.part.v"): when the server has a newer file by then, it answers with the whole
+     * new file and the download starts over, instead of sending the new file's tail after the old file's start.
+     * A partial file without a saved version is started over.
      */
-    fun download(url: String, dest: File, cancelled: () -> Boolean, progress: (Long, Long) -> Unit) {
+    fun download(url: String, dest: File, cancelled: () -> Boolean, progress: (Long, Long) -> Unit) =
+        download(url, dest, cancelled, progress, retried = false)
+
+    private fun download(url: String, dest: File, cancelled: () -> Boolean, progress: (Long, Long) -> Unit, retried: Boolean) {
         dest.parentFile?.mkdirs()
-        val part = File(dest.path + ".part")
+        val part = partFile(dest)
+        val meta = versionFile(dest)
         var have = if (part.exists()) part.length() else 0L
+        val validator = if (have > 0) runCatching { meta.readText().trim() }.getOrNull()?.takeIf { it.isNotEmpty() } else null
+        if (have > 0 && validator == null) {
+            // Unknown version: never joined to anything.
+            part.delete()
+            have = 0L
+        }
         val c = open(url)
-        if (have > 0) c.setRequestProperty("Range", "bytes=$have-")
+        if (have > 0 && validator != null) {
+            c.setRequestProperty("Range", "bytes=$have-")
+            c.setRequestProperty("If-Range", validator)
+        }
         try {
             val code = c.responseCode
-            if (code == 416) {
-                // The partial file is already complete (or the file changed): start over.
-                part.delete()
+            if (code == 416 || (code == 206 && !Resume.rangeStartsAt(c.getHeaderField("Content-Range"), have))) {
+                // The partial file is already complete, the file changed, or the server sent another range: start over.
+                discardPartial(dest)
                 c.disconnect()
-                return download(url, dest, cancelled, progress)
+                if (retried) throw IOException("HTTP $code")
+                return download(url, dest, cancelled, progress, retried = true)
             }
             if (code !in 200..299) throw IOException("HTTP $code")
-            if (code == 200) have = 0L // the server ignored the range
+            if (code != 206) {
+                // The whole file (new, changed, or the server ignored the range): remember which version it is.
+                have = 0L
+                val v = Resume.validator(c.getHeaderField("ETag"), c.getHeaderField("Last-Modified"))
+                if (v != null) meta.writeText(v) else meta.delete()
+            }
             val total = c.contentLengthLong.let { if (it >= 0) it + have else -1L }
             RandomAccessFile(part, "rw").use { raf ->
                 raf.setLength(have)
@@ -143,8 +167,45 @@ object Http {
             }
             if (dest.exists()) dest.delete()
             if (!part.renameTo(dest)) throw IOException("Couldn't save ${dest.name}")
+            meta.delete()
         } finally {
             c.disconnect()
+        }
+    }
+
+    /** The partial file of a download to [dest]. */
+    fun partFile(dest: File) = File(dest.path + ".part")
+
+    /** Which version of the file the partial file is (see [download]). */
+    private fun versionFile(dest: File) = File(dest.path + ".part.v")
+
+    /** Deletes a download's partial file and its saved version. */
+    fun discardPartial(dest: File) {
+        partFile(dest).delete()
+        versionFile(dest).delete()
+    }
+
+    /** A leftover of an unfinished download ("<file>.part" or "<file>.part.v"). */
+    fun isPartial(f: File) = f.name.endsWith(".part") || f.name.endsWith(".part.v")
+
+    /** Pure helpers for resuming downloads; unit-tested. */
+    object Resume {
+        /**
+         * What to send as `If-Range` later: a strong ETag, else the Last-Modified date. A weak ETag (`W/"…"`)
+         * can't be used for ranges, and neither can nothing at all (then a partial file is never continued).
+         */
+        fun validator(etag: String?, lastModified: String?): String? {
+            val e = etag?.trim()
+            if (!e.isNullOrEmpty() && !e.startsWith("W/") && e.length <= 200 && e.all { it.code in 0x21..0x7e }) return e
+            val m = lastModified?.trim()
+            if (!m.isNullOrEmpty() && m.length <= 100 && m.all { it.code in 0x20..0x7e }) return m
+            return null
+        }
+
+        /** A 206 answer's `Content-Range` ("bytes 1000-1999/2000") starts where the partial file ends. */
+        fun rangeStartsAt(contentRange: String?, have: Long): Boolean {
+            val m = Regex("""^\s*bytes\s+(\d+)-\d+/(\d+|\*)\s*$""").find(contentRange ?: return false) ?: return false
+            return m.groupValues[1].toLongOrNull() == have
         }
     }
 

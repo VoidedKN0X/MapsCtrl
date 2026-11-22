@@ -18,12 +18,12 @@ import com.vknxworks.mapsctrl.routing.TravelMode
 import com.vknxworks.mapsctrl.routing.Units
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.io.IOException
 
 val Context.appDataStore: DataStore<Preferences> by preferencesDataStore(name = "mapsctrl")
@@ -33,6 +33,19 @@ enum class MapStyle(@StringRes val label: Int) {
     SYSTEM(R.string.map_style_system),
     DAY(R.string.map_style_day),
     NIGHT(R.string.map_style_night),
+}
+
+/**
+ * How long MapsCtrl can be in the background before the app lock asks again (-1: only after a restart). Listed
+ * from the strictest to the least strict, so a settings file can be checked by order.
+ */
+enum class LockTimeout(@StringRes val label: Int, val millis: Long) {
+    IMMEDIATELY(R.string.lock_again_immediately, 0L),
+    MINUTE_1(R.string.lock_again_1m, 60_000L),
+    MINUTES_5(R.string.lock_again_5m, 5 * 60_000L),
+    MINUTES_15(R.string.lock_again_15m, 15 * 60_000L),
+    HOUR_1(R.string.lock_again_1h, 60 * 60_000L),
+    RESTART(R.string.lock_again_restart, -1L),
 }
 
 data class AppSettings(
@@ -54,6 +67,10 @@ data class AppSettings(
     val lastLon: Double = 4.3525,
     val lastZoom: Float = 4f,
     val hideScreenshots: Boolean = false,
+    /** "Hide in recent apps": the Recents view shows a blank card. Screenshots still work. */
+    val hideRecents: Boolean = false,
+    /** App lock: when it asks again after MapsCtrl was in the background. */
+    val lockTimeout: LockTimeout = LockTimeout.IMMEDIATELY,
     /** Terrain shading on the map (needs elevation data from Downloads). */
     val hillshading: Boolean = false,
     /** Show the Transit mode (public transport from Transitous) in route planning. */
@@ -103,6 +120,8 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         val lastLon = doublePreferencesKey("last_lon")
         val lastZoom = floatPreferencesKey("last_zoom")
         val hideScreenshots = booleanPreferencesKey("hide_screenshots")
+        val hideRecents = booleanPreferencesKey("hide_recents")
+        val lockTimeout = stringPreferencesKey("lock_timeout")
         val hillshading = booleanPreferencesKey("hillshading")
         val transitEnabled = booleanPreferencesKey("transit_enabled")
         val avoidTolls = booleanPreferencesKey("avoid_tolls")
@@ -118,9 +137,27 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         if (e is IOException) emit(emptyPreferences()) else throw e
     }
 
-    val settings: StateFlow<AppSettings> = prefs
-        .map { it.toSettings() }
-        .stateIn(scope, SharingStarted.Eagerly, AppSettings())
+    private val current = MutableStateFlow(AppSettings())
+    private val read = MutableStateFlow(false)
+
+    /** The settings; the defaults until the saved ones have been read (see [isLoaded]). */
+    val settings: StateFlow<AppSettings> = current
+
+    /**
+     * True once the saved settings have been read from storage. Always set after [settings] got its first saved
+     * value, so whoever sees `true` here also sees the saved settings (the window stays hidden from screenshots
+     * until then, so "Hide in screenshots" can't miss the first frames).
+     */
+    val isLoaded: StateFlow<Boolean> = read
+
+    init {
+        scope.launch {
+            prefs.map { it.toSettings() }.collect { s ->
+                current.value = s
+                read.value = true
+            }
+        }
+    }
 
     suspend fun loaded(): AppSettings = prefs.first().toSettings()
 
@@ -140,6 +177,8 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         lastLon = this[K.lastLon] ?: 4.3525,
         lastZoom = this[K.lastZoom] ?: 4f,
         hideScreenshots = this[K.hideScreenshots] ?: false,
+        hideRecents = this[K.hideRecents] ?: false,
+        lockTimeout = enumOr(this[K.lockTimeout], LockTimeout.IMMEDIATELY),
         hillshading = this[K.hillshading] ?: false,
         transitEnabled = this[K.transitEnabled] ?: true,
         avoidTolls = this[K.avoidTolls] ?: false,
@@ -171,6 +210,8 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
                 p[K.lastLon] = s.lastLon
                 p[K.lastZoom] = s.lastZoom
                 p[K.hideScreenshots] = s.hideScreenshots
+                p[K.hideRecents] = s.hideRecents
+                p[K.lockTimeout] = s.lockTimeout.name
                 p[K.hillshading] = s.hillshading
                 p[K.transitEnabled] = s.transitEnabled
                 p[K.avoidTolls] = s.avoidTolls

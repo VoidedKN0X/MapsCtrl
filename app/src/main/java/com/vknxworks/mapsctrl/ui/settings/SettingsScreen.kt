@@ -22,6 +22,11 @@ import androidx.compose.material.icons.outlined.DirectionsTransit
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Password
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.NotificationImportant
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Screenshot
@@ -43,10 +48,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vknxworks.mapsctrl.R
+import com.vknxworks.mapsctrl.ui.lock.AppLock
 import com.vknxworks.mapsctrl.container
 import com.vknxworks.mapsctrl.routing.TravelMode
 import com.vknxworks.mapsctrl.routing.Units
+import com.vknxworks.mapsctrl.data.lock.LockVault
 import com.vknxworks.mapsctrl.settings.AppSettings
+import com.vknxworks.mapsctrl.settings.LockTimeout
+import com.vknxworks.mapsctrl.ui.lock.PinRequest
+import com.vknxworks.mapsctrl.ui.lock.findActivity
 import com.vknxworks.mapsctrl.settings.MapStyle
 import com.vknxworks.mapsctrl.share.Ntfy
 import com.vknxworks.mapsctrl.ui.components.CtrlTextField
@@ -88,6 +98,7 @@ fun SettingsScreen() {
                 GroupSwitch(stringResource(R.string.voice), stringResource(R.string.voice_subtitle), s.voice, Icons.Outlined.RecordVoiceOver) { v -> set { it.copy(voice = v) } }
                 GroupRow(stringResource(R.string.voice_test), stringResource(R.string.voice_test_subtitle), onClick = { c.navigation.testVoice() })
                 GroupRow(stringResource(R.string.voice_settings), stringResource(R.string.voice_settings_subtitle), showChevron = true, onClick = {
+                    AppLock.expectReturn()
                     runCatching { context.startActivity(Intent("com.android.settings.TTS_SETTINGS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                 })
                 GroupSwitch(stringResource(R.string.speed_limit), stringResource(R.string.speed_limit_subtitle), s.speedLimit, Icons.Outlined.Speed) { v -> set { it.copy(speedLimit = v) } }
@@ -109,17 +120,7 @@ fun SettingsScreen() {
 
             NtfyGroup(s, ::set)
 
-            Group(stringResource(R.string.group_privacy)) {
-                GroupRow(stringResource(R.string.location_permission), stringResource(if (c.location.hasPermission()) R.string.location_permission_on else R.string.location_permission_off), icon = Icons.Outlined.LocationOn, showChevron = true, onClick = {
-                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                })
-                GroupSwitch(stringResource(R.string.hide_screenshots), stringResource(R.string.hide_screenshots_subtitle), s.hideScreenshots, Icons.Outlined.Screenshot) { v -> set { it.copy(hideScreenshots = v) } }
-                GroupSwitch(stringResource(R.string.keep_recent), stringResource(R.string.keep_recent_subtitle), s.keepRecentSearches, Icons.Outlined.History) { v ->
-                    set { it.copy(keepRecentSearches = v) }
-                    // Turning it off also forgets the list.
-                    if (!v) scope.launch { c.saved.clearRecent() }
-                }
-            }
+            PrivacyAndSecurityGroup(s, ::set)
 
             BackupGroup()
         }
@@ -166,5 +167,76 @@ private fun NtfyGroup(s: AppSettings, set: ((AppSettings) -> AppSettings) -> Uni
                 Toast.makeText(context, if (ok) R.string.ntfy_test_ok else R.string.ntfy_test_failed, Toast.LENGTH_SHORT).show()
             }
         })
+    }
+}
+
+/** Privacy and security: the shared Ctrl series app lock, location, hiding MapsCtrl in screenshots and recents. */
+@Composable
+private fun PrivacyAndSecurityGroup(s: AppSettings, set: ((AppSettings) -> AppSettings) -> Unit) {
+    val context = LocalContext.current
+    val c = context.container
+    val scope = rememberCoroutineScope()
+    val bioAvailable = remember { AppLock.biometricAvailable(context) }
+    val lockOn = c.vault.enabled
+    Group(stringResource(R.string.group_privacy), footer = stringResource(R.string.app_lock_footer)) {
+        GroupSwitch(
+            stringResource(R.string.app_lock),
+            stringResource(R.string.app_lock_subtitle),
+            checked = lockOn,
+            icon = Icons.Outlined.Lock,
+        ) { on -> AppLock.request = if (on) PinRequest.ENABLE else PinRequest.DISABLE }
+        if (lockOn) {
+            GroupRow(
+                stringResource(R.string.lock_change_pin),
+                stringResource(R.string.lock_change_pin_subtitle, LockVault.PIN_MIN),
+                icon = Icons.Outlined.Password,
+                showChevron = true,
+                onClick = { AppLock.request = PinRequest.CHANGE },
+            )
+            GroupSwitch(
+                stringResource(R.string.lock_fingerprint),
+                stringResource(if (bioAvailable || c.vault.biometricEnabled) R.string.lock_fingerprint_subtitle else R.string.lock_fingerprint_unavailable),
+                checked = c.vault.biometricEnabled,
+                icon = Icons.Outlined.Fingerprint,
+            ) { on ->
+                if (!on) {
+                    c.vault.disableBiometric()
+                } else if (bioAvailable) {
+                    val activity = context.findActivity()
+                    val cipher = c.vault.biometricEnrolCipher()
+                    if (activity == null || cipher == null) {
+                        Toast.makeText(context, context.getString(R.string.lock_fingerprint_setup_failed), Toast.LENGTH_SHORT).show()
+                    } else {
+                        AppLock.biometricPrompt(
+                            activity,
+                            context.getString(R.string.lock_fingerprint_enable_title),
+                            context.getString(R.string.lock_fingerprint_enable_subtitle),
+                            cipher,
+                        ) { unlocked ->
+                            if (!c.vault.finishBiometricEnrol(unlocked)) {
+                                Toast.makeText(context, context.getString(R.string.lock_fingerprint_setup_failed), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            }
+            GroupChoice(
+                stringResource(R.string.lock_again),
+                LockTimeout.entries.map { it to stringResource(it.label) },
+                s.lockTimeout,
+                icon = Icons.Outlined.Timer,
+            ) { t -> set { it.copy(lockTimeout = t) } }
+        }
+        GroupRow(stringResource(R.string.location_permission), stringResource(if (c.location.hasPermission()) R.string.location_permission_on else R.string.location_permission_off), icon = Icons.Outlined.LocationOn, showChevron = true, onClick = {
+            AppLock.expectReturn()
+            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        })
+        GroupSwitch(stringResource(R.string.hide_screenshots), stringResource(R.string.hide_screenshots_subtitle), s.hideScreenshots, Icons.Outlined.Screenshot) { v -> set { it.copy(hideScreenshots = v) } }
+        GroupSwitch(stringResource(R.string.hide_recents), stringResource(R.string.hide_recents_subtitle), s.hideRecents, Icons.Outlined.Layers) { v -> set { it.copy(hideRecents = v) } }
+        GroupSwitch(stringResource(R.string.keep_recent), stringResource(R.string.keep_recent_subtitle), s.keepRecentSearches, Icons.Outlined.History) { v ->
+            set { it.copy(keepRecentSearches = v) }
+            // Turning it off also forgets the list.
+            if (!v) scope.launch { c.saved.clearRecent() }
+        }
     }
 }

@@ -31,6 +31,10 @@ class SegmentRepository(private val context: Context, private val scope: Corouti
     private val _progress = MutableStateFlow<Map<String, Pair<Long, Long>>>(emptyMap())
     val progress: StateFlow<Map<String, Pair<Long, Long>>> = _progress
 
+    private val _active = MutableStateFlow(false)
+    /** A download of routing data is running (from the first tile to the last). */
+    val active: StateFlow<Boolean> = _active
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
@@ -42,7 +46,7 @@ class SegmentRepository(private val context: Context, private val scope: Corouti
         scope.launch(Dispatchers.IO) {
             segmentDir.mkdirs()
             installProfiles()
-            segmentDir.listFiles()?.filter { it.name.endsWith(".part") }?.forEach { it.delete() }
+            segmentDir.listFiles()?.filter { Http.isPartial(it) }?.forEach { it.delete() }
             refresh()
         }
     }
@@ -83,30 +87,39 @@ class SegmentRepository(private val context: Context, private val scope: Corouti
         if (job?.isActive == true) return
         cancelled = false
         _error.value = null
+        _active.value = true
         job = scope.launch(Dispatchers.IO) {
-            var ok = true
-            for (t in tiles) {
-                if (has(t)) continue
-                try {
-                    _progress.update { it + (t to (0L to -1L)) }
-                    Http.download(Segments.BASE_URL + "$t.rd5", File(segmentDir, "$t.rd5"), { cancelled }) { done, total ->
-                        _progress.update { it + (t to (done to total)) }
-                    }
-                } catch (e: CancellationException) {
-                    ok = false
-                    File(segmentDir, "$t.rd5.part").delete()
-                    break
-                } catch (e: Exception) {
-                    ok = false
-                    _error.value = e.message ?: e.javaClass.simpleName
-                    break
-                } finally {
-                    _progress.update { it - t }
-                }
+            try {
+                downloadAll(tiles, onDone)
+            } finally {
+                _active.value = false
             }
-            refresh()
-            withContext(Dispatchers.Main) { onDone(ok) }
         }
+    }
+
+    private suspend fun downloadAll(tiles: Collection<String>, onDone: (Boolean) -> Unit) {
+        var ok = true
+        for (t in tiles) {
+            if (has(t)) continue
+            try {
+                _progress.update { it + (t to (0L to -1L)) }
+                Http.download(Segments.BASE_URL + "$t.rd5", File(segmentDir, "$t.rd5"), { cancelled }) { done, total ->
+                    _progress.update { it + (t to (done to total)) }
+                }
+            } catch (e: CancellationException) {
+                ok = false
+                Http.discardPartial(File(segmentDir, "$t.rd5"))
+                break
+            } catch (e: Exception) {
+                ok = false
+                _error.value = e.message ?: e.javaClass.simpleName
+                break
+            } finally {
+                _progress.update { it - t }
+            }
+        }
+        refresh()
+        withContext(Dispatchers.Main) { onDone(ok) }
     }
 
     fun cancel() {

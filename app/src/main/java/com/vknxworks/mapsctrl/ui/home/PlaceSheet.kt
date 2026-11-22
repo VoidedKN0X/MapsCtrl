@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vknxworks.mapsctrl.R
+import com.vknxworks.mapsctrl.ui.lock.AppLock
 import com.vknxworks.mapsctrl.container
 import com.vknxworks.mapsctrl.geo.Geo
 import com.vknxworks.mapsctrl.search.Place
@@ -227,6 +228,7 @@ private fun DetailRow(icon: ImageVector, text: String, mono: Boolean = false, on
 
 private fun open(context: Context, intent: Intent) {
     try {
+        AppLock.expectReturn()
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     } catch (_: ActivityNotFoundException) {
     }

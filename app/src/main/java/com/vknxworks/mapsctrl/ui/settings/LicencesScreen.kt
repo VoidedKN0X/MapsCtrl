@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vknxworks.mapsctrl.R
+import com.vknxworks.mapsctrl.ui.lock.AppLock
 import com.vknxworks.mapsctrl.ui.components.Group
 import com.vknxworks.mapsctrl.ui.components.GroupRow
 import com.vknxworks.mapsctrl.ui.components.ScreenTopBar
@@ -25,6 +26,7 @@ fun LicencesScreen() {
     val context = LocalContext.current
     fun open(url: String) {
         try {
+            AppLock.expectReturn()
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (_: ActivityNotFoundException) {
         }

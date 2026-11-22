@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vknxworks.mapsctrl.R
+import com.vknxworks.mapsctrl.ui.lock.AppLock
 import com.vknxworks.mapsctrl.container
 import com.vknxworks.mapsctrl.data.CatalogItem
 import com.vknxworks.mapsctrl.data.DirectoryIndex
@@ -191,7 +192,7 @@ private fun InstalledScreen(onAdd: () -> Unit) {
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = Gutter, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             CtrlButton(stringResource(R.string.add_maps), onClick = onAdd, icon = Icons.Outlined.Public, modifier = Modifier.weight(1f))
-            CtrlSecondaryButton(onClick = { importer.launch(arrayOf("application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f).height(56.dp)) {
+            CtrlSecondaryButton(onClick = { AppLock.expectReturn(); importer.launch(arrayOf("application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f).height(56.dp)) {
                 Icon(Icons.Outlined.FileOpen, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.import_map), maxLines = 1)

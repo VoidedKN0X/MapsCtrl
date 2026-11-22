@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.em
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vknxworks.mapsctrl.BuildConfig
 import com.vknxworks.mapsctrl.R
+import com.vknxworks.mapsctrl.ui.lock.AppLock
 import com.vknxworks.mapsctrl.container
 import com.vknxworks.mapsctrl.ui.common.rememberFmt
 import com.vknxworks.mapsctrl.ui.components.CtrlButton
@@ -86,6 +87,8 @@ fun YouScreen() {
 
     fun open(url: String) {
         try {
+            // Opening the browser from here doesn't count as leaving MapsCtrl for the app lock.
+            AppLock.expectReturn()
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (_: ActivityNotFoundException) {
         }
